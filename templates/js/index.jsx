@@ -1,8 +1,9 @@
 import 'bootstrap';
 import 'bootswatch/dist/darkly/bootstrap.min.css';
+import '../css/peld.css';
 import React from "react";
 import ReactDOM from "react-dom";
-import App from "./app";
+import FleetMembers from "./fleetmembers";
 import io from 'socket.io-client';
 
 var socket = io();
@@ -21,4 +22,4 @@ function register_handler(type) {
 export { handle_fleet_members_event };
 export { register_handler };
 
-ReactDOM.render(<App />, document.getElementById("content"));
+ReactDOM.render(<FleetMembers />, document.getElementById("content"));

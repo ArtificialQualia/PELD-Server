@@ -1,8 +1,9 @@
 const webpack = require('webpack');
+const path = require('path');
 const config = {
-    entry:  __dirname + '/js/index.jsx',
+    entry:  path.resolve(__dirname, 'index.jsx'),
     output: {
-        path: __dirname + '/dist',
+        path: path.resolve(__dirname, '../../static/dist'),
         filename: 'bundle.js',
     },
     resolve: {
@@ -17,7 +18,14 @@ const config = {
         {
           test: /\.jsx?/,
           exclude: /node_modules/,
-          use: 'babel-loader'
+          use: [
+            {
+              loader: 'babel-loader',
+              options: {
+                presets: ['react']
+              }
+            }
+          ],
         }
       ]
     }
