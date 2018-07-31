@@ -1,3 +1,25 @@
 .ml-6, .mx-6 {
     margin-left: 5.0rem;
 }
+
+.list-group-item {
+    padding: 0.375rem 0.625rem;
+}
+
+.list-group-item-action {
+    width: auto;
+    cursor: pointer;
+}
+
+.chevron, .chevron-logo {
+    fill: none;
+    stroke-width: 5;
+}
+
+.chevron {
+    stroke: gold;
+}
+
+.chevron-logo {
+    stroke: silver;
+}

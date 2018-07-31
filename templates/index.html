@@ -11,7 +11,12 @@
         <a href="{{ url_for('main_pages.index') }}" class="navbar-brand">
           <img src="{{ url_for('static', filename='img/favicon.ico') }}" width="32" height="32">
           <span class="align-middle pl-1">+</span>
-          <img src="{{ url_for('static', filename='img/icon.png') }}" width="32" height="32">
+          <svg height="32" width="32">
+            <polyline points="2,11 16,3 30,11" class="chevron-logo"></polyline>
+            <polyline points="2,20 16,12 30,20" class="chevron-logo"></polyline>
+            <polyline points="2,29 16,21 30,29" class="chevron-logo"></polyline>
+            ?
+          </svg>
           <span class="align-middle">PELD-Fleet</span>
         </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,7 +28,7 @@
               <a class="nav-link" href="../help/">Help</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="http://blog.bootswatch.com">Blog</a>
+              <a class="nav-link" href="../help/">FAQ</a>
             </li>
           </ul>
 

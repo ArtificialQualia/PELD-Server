@@ -60,7 +60,9 @@ def login():
 @sso_pages.route('/sso/logout')
 @login_required
 def logout():
-    #revoke tokens here
+    sso_data = current_user.get_sso_data()
+    esisecurity.update_token(sso_data)
+    esisecurity.revoke()
     logout_user()
     return redirect(url_for("main_pages.index"))
 

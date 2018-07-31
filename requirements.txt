@@ -1,5 +1,5 @@
 Flask==1.0.2
-esipy==0.3.4
+esipy==0.5.0
 Flask-PyMongo==0.5.1
 flask-login==0.4.1
 flask-socketio=3.0.1

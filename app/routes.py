@@ -49,13 +49,11 @@ def handle_message():
     print('Client connected')
 
 @socketio.on('register_fleet_handler')
-def handle_fleet(bool):
+def handle_fleet():
     print('handlign fleet')
     check_fleet()
-    if 'esi-fleets.write_fleet.v1' in current_user.scopes and current_user.fleet_id:
-        fleet = get_fleet_members()
-    #fleet_json = json.dumps(fleet, default=json_util.default)
-    emit('fleet_members', json.dumps(fleet, default=json_serial))
+    fleet = get_fleet()
+    emit('fleet_update', json.dumps(fleet, default=json_serial))
     
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -81,6 +79,70 @@ def check_fleet():
         print('error getting fleet status for ' + str(current_user.get_id()))
     current_user.fleet_id = fleet.data['fleet_id']
 
+def get_fleet():
+    fleet = {'name': 'Fleet'}
+    fleet['wings'] = get_fleet_wings()
+    fleet_members = get_fleet_members()
+    for member in fleet_members:
+        decoded_member = decode_fleet_member(member.copy())
+        if member['squad_id'] == -1 and member['wing_id'] == -1:
+            fleet['fleet_commander'] = decoded_member
+        for wing in fleet['wings']:
+            if member['wing_id'] == wing['id']:
+                if member['squad_id'] == -1:
+                    wing['wing_commander'] = decoded_member
+                for squad in wing['squads']:
+                    if member['squad_id'] == squad['id']:
+                        if member['role_name'].startswith('Squad Commander'):
+                            squad['squad_commander'] = decoded_member
+                        else:
+                            if 'members' not in squad:
+                                squad['members'] = []
+                            squad['members'].append(decoded_member)
+    return fleet
+
+def decode_fleet_member(member):
+    member['character_name'] = decode_character_id(member['character_id'])
+    member['ship_name'] = decode_ship_id(member['ship_type_id'])
+    member['location_name'] = decode_system_id(member['solar_system_id'])
+    member.pop('join_time')
+    member.pop('role')
+    member.pop('solar_system_id')
+    member.pop('squad_id')
+    member.pop('takes_fleet_warp')
+    member.pop('wing_id')
+    return member
+
+def decode_character_id(_id):
+    op = esiapp.op['get_characters_character_id'](
+        character_id=_id
+    )
+    request = esiclient.request(op)
+    if request.status != 200:
+        print('error getting character data for ' + str(_id))
+        return None
+    return request.data['name']
+
+def decode_ship_id(_id):
+    op = esiapp.op['get_universe_types_type_id'](
+        type_id=_id
+    )
+    request = esiclient.request(op)
+    if request.status != 200:
+        print('error getting ship data for ' + str(_id))
+        return None
+    return request.data['name']
+
+def decode_system_id(_id):
+    op = esiapp.op['get_universe_systems_system_id'](
+        system_id=_id
+    )
+    request = esiclient.request(op)
+    if request.status != 200:
+        print('error getting system data for ' + str(_id))
+        return None
+    return request.data['name']
+
 def get_fleet_members():
     update_token()
     op = esiapp.op['get_fleets_fleet_id_members'](
@@ -92,6 +154,20 @@ def get_fleet_members():
         return None
     elif fleet.status != 200:
         print('error getting fleet members for ' + str(current_user.get_id()))
+        return None
+    return fleet.data
+
+def get_fleet_wings():
+    update_token()
+    op = esiapp.op['get_fleets_fleet_id_wings'](
+        fleet_id=current_user.fleet_id
+    )
+    fleet = esiclient.request(op)
+    if fleet.status == 404:
+        print('no fleet boss')
+        return None
+    elif fleet.status != 200:
+        print('error getting fleet wings for ' + str(current_user.get_id()))
         return None
     return fleet.data
 
