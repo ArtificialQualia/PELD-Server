@@ -11,6 +11,10 @@
     cursor: pointer;
 }
 
+.list-group-item-container {
+    padding: 0 .2rem .2rem .2rem;
+}
+
 .chevron, .chevron-logo {
     fill: none;
     stroke-width: 5;
@@ -22,4 +26,12 @@
 
 .chevron-logo {
     stroke: silver;
+}
+
+.star {
+    color: silver;
+}
+
+.red {
+    color: red;
 }

@@ -32,12 +32,22 @@ from esipy.exceptions import APIException
 
 import re
 import json
+import copy
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timezone
 import pyswagger
 
 main_pages = Blueprint('main_pages', __name__)
+
+thread = None
+
+def background_fleet(user, sid):
+    while True:
+        fleet = get_fleet(user)
+        print(sid)
+        socketio.emit('fleet_update', json.dumps(fleet, default=json_serial), room=sid)
+        socketio.sleep(5)
 
 @main_pages.route("/")
 @login_required
@@ -52,8 +62,12 @@ def handle_message():
 def handle_fleet():
     print('handlign fleet')
     check_fleet()
-    fleet = get_fleet()
-    emit('fleet_update', json.dumps(fleet, default=json_serial))
+    user = copy.copy(current_user)
+    sid = request.sid
+    global thread
+    if thread is None:
+        pass
+    thread = socketio.start_background_task(target=lambda: background_fleet(user, sid))
     
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -67,7 +81,7 @@ def test_disconnect():
     print('Client disconnected')
 
 def check_fleet():
-    update_token()
+    update_token(current_user)
     current_user.fleet_id = None
     op = esiapp.op['get_characters_character_id_fleet'](
         character_id=current_user.get_id()
@@ -79,10 +93,11 @@ def check_fleet():
         print('error getting fleet status for ' + str(current_user.get_id()))
     current_user.fleet_id = fleet.data['fleet_id']
 
-def get_fleet():
+def get_fleet(current_user):
     fleet = {'name': 'Fleet'}
-    fleet['wings'] = get_fleet_wings()
-    fleet_members = get_fleet_members()
+    fleet['wings'] = get_fleet_wings(current_user)
+    fleet['wings'] = sorted(fleet['wings'], key=lambda e:e['id'])
+    fleet_members = get_fleet_members(current_user)
     for member in fleet_members:
         decoded_member = decode_fleet_member(member.copy())
         if member['squad_id'] == -1 and member['wing_id'] == -1:
@@ -101,6 +116,34 @@ def get_fleet():
                             squad['members'].append(decoded_member)
     return fleet
 
+def get_fleet_members(current_user):
+    update_token(current_user)
+    op = esiapp.op['get_fleets_fleet_id_members'](
+        fleet_id=current_user.fleet_id
+    )
+    fleet = esiclient.request(op)
+    if fleet.status == 404:
+        print('no fleet boss')
+        return None
+    elif fleet.status != 200:
+        print('error getting fleet members for ' + str(current_user.get_id()))
+        return None
+    return fleet.data
+
+def get_fleet_wings(current_user):
+    update_token(current_user)
+    op = esiapp.op['get_fleets_fleet_id_wings'](
+        fleet_id=current_user.fleet_id
+    )
+    fleet = esiclient.request(op)
+    if fleet.status == 404:
+        print('no fleet boss')
+        return None
+    elif fleet.status != 200:
+        print('error getting fleet wings for ' + str(current_user.get_id()))
+        return None
+    return fleet.data
+
 def decode_fleet_member(member):
     member['character_name'] = decode_character_id(member['character_id'])
     member['ship_name'] = decode_ship_id(member['ship_type_id'])
@@ -114,6 +157,10 @@ def decode_fleet_member(member):
     return member
 
 def decode_character_id(_id):
+    id_filter = {'id': _id}
+    result = mongo.db.entities.find_one(id_filter)
+    if result is not None:
+        return result['name']
     op = esiapp.op['get_characters_character_id'](
         character_id=_id
     )
@@ -121,9 +168,22 @@ def decode_character_id(_id):
     if request.status != 200:
         print('error getting character data for ' + str(_id))
         return None
+    add_db_entity(_id, request.data['name'])
     return request.data['name']
 
+def add_db_entity(_id, name):
+    _filter = {'id': _id}
+    data_to_update = {}
+    data_to_update['id'] = _id
+    data_to_update['name'] = name
+    update = {"$set": data_to_update}
+    mongo.db.entities.find_one_and_update(_filter, update, upsert=True)
+
 def decode_ship_id(_id):
+    id_filter = {'id': _id}
+    result = mongo.db.entities.find_one(id_filter)
+    if result is not None:
+        return result['name']
     op = esiapp.op['get_universe_types_type_id'](
         type_id=_id
     )
@@ -131,9 +191,14 @@ def decode_ship_id(_id):
     if request.status != 200:
         print('error getting ship data for ' + str(_id))
         return None
+    add_db_entity(_id, request.data['name'])
     return request.data['name']
 
 def decode_system_id(_id):
+    id_filter = {'id': _id}
+    result = mongo.db.entities.find_one(id_filter)
+    if result is not None:
+        return result['name']
     op = esiapp.op['get_universe_systems_system_id'](
         system_id=_id
     )
@@ -141,37 +206,10 @@ def decode_system_id(_id):
     if request.status != 200:
         print('error getting system data for ' + str(_id))
         return None
+    add_db_entity(_id, request.data['name'])
     return request.data['name']
 
-def get_fleet_members():
-    update_token()
-    op = esiapp.op['get_fleets_fleet_id_members'](
-        fleet_id=current_user.fleet_id
-    )
-    fleet = esiclient.request(op)
-    if fleet.status == 404:
-        print('no fleet boss')
-        return None
-    elif fleet.status != 200:
-        print('error getting fleet members for ' + str(current_user.get_id()))
-        return None
-    return fleet.data
-
-def get_fleet_wings():
-    update_token()
-    op = esiapp.op['get_fleets_fleet_id_wings'](
-        fleet_id=current_user.fleet_id
-    )
-    fleet = esiclient.request(op)
-    if fleet.status == 404:
-        print('no fleet boss')
-        return None
-    elif fleet.status != 200:
-        print('error getting fleet wings for ' + str(current_user.get_id()))
-        return None
-    return fleet.data
-
-def update_token():
+def update_token(current_user):
     sso_data = current_user.get_sso_data()
     esisecurity.update_token(sso_data)
     if sso_data['expires_in'] <= 5:

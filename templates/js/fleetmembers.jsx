@@ -1,9 +1,10 @@
 import React from "react";
 import { handle_fleet_update } from "./index";
 import { register_handler } from "./index";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const FCChevron = (
-  <svg className="align-middle mr-1" height="16" width="16" viewBox="0 0 32 32">
+  <svg className="svg-inline--fa mr-1" height="16" width="16" viewBox="0 0 32 32">
     <polyline points="2,11 16,3 30,11" className="chevron"></polyline>
     <polyline points="2,20 16,12 30,20" className="chevron"></polyline>
     <polyline points="2,29 16,21 30,29" className="chevron"></polyline>
@@ -12,7 +13,7 @@ const FCChevron = (
 );
 
 const WCChevron = (
-  <svg className="align-middle mr-1" height="16" width="16" viewBox="0 0 32 32">
+  <svg className="svg-inline--fa mr-1" height="16" width="16" viewBox="0 0 32 24">
     <polyline points="2,11 16,3 30,11" className="chevron"></polyline>
     <polyline points="2,20 16,12 30,20" className="chevron"></polyline>
     ?
@@ -20,28 +21,41 @@ const WCChevron = (
 );
 
 const SCChevron = (
-  <svg className="align-middle mr-1" height="16" width="16" viewBox="0 0 32 32">
+  <svg className="svg-inline--fa mr-1" height="16" width="16" viewBox="0 0 32 32">
     <polyline points="2,20 16,12 30,20" className="chevron"></polyline>
     ?
   </svg>
 );
 
+//const BossStar = (
+//  <svg className="align-middle mr-1" height="16" width="16" viewBox="0 0 200 200">
+//    <polygon points="100,10 40,198 190,78 10,78 160,198" className="star" />
+//  </svg>
+//);
+
 function FleetMember(props) {
   var chevron = ""
+  var star = ""
   if (props.member.role_name.startsWith('Fleet Commander')) {
-    chevron = FCChevron
+    chevron = FCChevron;
   }
   else if (props.member.role_name.startsWith('Wing Commander')) {
-    chevron = WCChevron
+    chevron = WCChevron;
   }
   else if (props.member.role_name.startsWith('Squad Commander')) {
-    chevron = SCChevron
+    chevron = SCChevron;
+  }
+  if (props.member.role_name.endsWith('(Boss)')) {
+    star = <FontAwesomeIcon className="star mr-1" icon="star" />;
   }
   return (
     <div className={"list-group-item list-group-item-action " + props.indent}>
-      <span className="align-middle d-flex w-100 justify-content-between">
-        <div className="text-truncate">{chevron}{props.member.character_name}</div>
-        <small>PELD: </small>
+      <span className="d-flex w-100 justify-content-between">
+        <div className="text-truncate">
+          {chevron}{star}
+          <span className="">{props.member.character_name}</span>
+        </div>
+        <small className="text-nowrap align-top">PELD: <FontAwesomeIcon className="ml-1 red" icon="times" /></small>
       </span>
       <span className="align-middle d-flex w-100 justify-content-between">
         <div className="text-truncate">
@@ -54,6 +68,65 @@ function FleetMember(props) {
       </span>
     </div>
   );
+}
+
+class FleetGroup extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { carret_direction: null }
+    this.previousCount = props.count
+    if (props.count > 0) {
+      this.state.carret_direction = "down";
+      this.show = "show";
+      this.show_state = "show";
+    }
+    else {
+      this.state.carret_direction = "right";
+      this.show = "";
+      this.show_state = "";
+    }
+    this.handleCollapse = this.handleCollapse.bind(this);
+  }
+
+  handleCollapse(event) {
+    if (this.state.carret_direction == "down") {
+      this.setState({carret_direction: "right"})
+      this.show_state = "";
+    }
+    else if (this.state.carret_direction == "right") {
+      this.setState({carret_direction: "down"})
+      this.show_state = "show";
+    }
+  }
+
+  render() {
+    if (this.previousCount == 0 && this.props.count > 0) {
+      this.state.carret_direction = "down";
+      if (this.show.startsWith("show") && this.show_state == ""){
+        this.show += " ";
+      }
+      else {
+        this.show = "show";
+      }
+      this.show_state = "show";
+    }
+    this.previousCount = this.props.count;
+    return (
+      <div className="list-group-item list-group-item-container pb-0" id={this.props.id}>
+        <div>
+          <button className="btn btn-link py-0 pl-0" data-toggle="collapse" data-target={"#collapse_" + this.props.id} onClick={this.handleCollapse}>
+            <FontAwesomeIcon className="mr-1" icon={"caret-" + this.state.carret_direction} />
+            {this.props.name}
+          </button>
+          <span className="m-1 float-right badge badge-secondary">{this.props.count}</span>
+        </div>
+
+        <div id={"collapse_" + this.props.id} className={"ml-3 pb-1 collapse " + this.show}>
+          {this.props.children}
+        </div>
+      </div>
+    );
+  }
 }
 
 export default class FleetDisplay extends React.Component {
@@ -79,29 +152,39 @@ export default class FleetDisplay extends React.Component {
     }
     for (var i=0; i < this.state.fleet.wings.length; i++){
       var wing = this.state.fleet.wings[i];
+      var squads = []
+      var wing_count = 0;
       if ('wing_commander' in wing) {
-        fleet.push(<FleetMember indent="ml-4" key={wing.wing_commander.character_id} member={wing.wing_commander} />);
+        squads.push(<FleetMember key={wing.wing_commander.character_id} member={wing.wing_commander} />);
+        wing_count += 1;
       }
       else {
-        fleet.push(<div key={wing.id} className="list-group-item text-truncate ml-4">{WCChevron}(No Wing Commander)</div>);
+        squads.push(<div key={wing.id} className="list-group-item text-truncate">{WCChevron}(No Wing Commander)</div>);
       }
       for (var j=0; j < wing.squads.length; j++) {
         var squad = wing.squads[j];
+        var squad_members = [];
+        var squad_count = 0;
         if ('squad_commander' in squad) {
-          fleet.push(<FleetMember indent="ml-5" key={squad.squad_commander.character_id} member={squad.squad_commander} />);
+          squad_members.push(<FleetMember key={squad.squad_commander.character_id} member={squad.squad_commander} />);
+          squad_count += 1;
         }
         else {
-          fleet.push(<div key={squad.id} className="list-group-item text-truncate ml-5">{SCChevron}(No Squad Commander)</div>);
+          squad_members.push(<div key={squad.id} className="list-group-item text-truncate">{SCChevron}(No Squad Commander)</div>);
         }
         if ('members' in squad) {
           for (var k=0; k < squad.members.length; k++){
-            fleet.push(<FleetMember indent="ml-5" key={squad.members[k].character_id} member={squad.members[k]} />);
+            squad_members.push(<FleetMember key={squad.members[k].character_id} member={squad.members[k]} />);
+            squad_count += 1;
           }
         }
         else {
-          fleet.push(<div key={squad.id * -1} className="list-group-item text-truncate ml-5">(No Members)</div>);
+          squad_members.push(<div key={squad.id * -1} className="list-group-item text-truncate">(No Members)</div>);
         }
+        squads.push(<FleetGroup key={squad.id} id={squad.id} name={squad.name} children={squad_members} count={squad_count} />);
+        wing_count += squad_count;
       }
+      fleet.push(<FleetGroup key={wing.id} id={wing.id} name={wing.name} children={squads} count={wing_count} />);
     }
 //    var fleet_elements = this.state.fleet.map((fleet_member) =>
 //      <div className="list-group-item">{fleet_member}</div>
