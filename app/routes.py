@@ -17,8 +17,6 @@ from flask import Blueprint
 from flask_login import current_user
 from flask_login import login_required
 
-from flask_socketio import emit
-
 import config
 from app.flask_shared_modules import mongo
 #from app.flask_shared_modules import r
@@ -44,6 +42,11 @@ thread = None
 
 def background_fleet(user, sid):
     while True:
+        id_filter = {'id': user.character_id}
+        result = mongo.db.characters.find_one(id_filter)
+        print(result['sid'])
+        if not result or result['sid'] != sid:
+            raise Exception
         fleet = get_fleet(user)
         print(sid)
         socketio.emit('fleet_update', json.dumps(fleet, default=json_serial), room=sid)
@@ -64,6 +67,7 @@ def handle_fleet():
     check_fleet()
     user = copy.copy(current_user)
     sid = request.sid
+    add_db_sid(current_user.character_id, sid)
     global thread
     if thread is None:
         pass
@@ -170,6 +174,13 @@ def decode_character_id(_id):
         return None
     add_db_entity(_id, request.data['name'])
     return request.data['name']
+
+def add_db_sid(_id, sid):
+    _filter = {'id': _id}
+    data_to_update = {}
+    data_to_update['sid'] = sid
+    update = {"$set": data_to_update}
+    mongo.db.characters.find_one_and_update(_filter, update, upsert=True)
 
 def add_db_entity(_id, name):
     _filter = {'id': _id}

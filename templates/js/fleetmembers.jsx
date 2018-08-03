@@ -86,14 +86,15 @@ class FleetGroup extends React.Component {
       this.show_state = "";
     }
     this.handleCollapse = this.handleCollapse.bind(this);
+    this.collapsibleRef = React.createRef();
   }
 
   handleCollapse(event) {
-    if (this.state.carret_direction == "down") {
+    if (event.currentTarget.classList.contains('collapsed')) {
       this.setState({carret_direction: "right"})
       this.show_state = "";
     }
-    else if (this.state.carret_direction == "right") {
+    else {
       this.setState({carret_direction: "down"})
       this.show_state = "show";
     }
@@ -113,12 +114,12 @@ class FleetGroup extends React.Component {
     this.previousCount = this.props.count;
     return (
       <div className="list-group-item list-group-item-container pb-0" id={this.props.id}>
-        <div>
-          <button className="btn btn-link py-0 pl-0" data-toggle="collapse" data-target={"#collapse_" + this.props.id} onClick={this.handleCollapse}>
+        <div style={{height: "1.6rem", whiteSpace: "nowrap", overflow: "hidden"}}>
+          <button className="btn btn-link p-0" data-toggle="collapse" data-target={"#collapse_" + this.props.id} onClick={this.handleCollapse}>
             <FontAwesomeIcon className="mr-1" icon={"caret-" + this.state.carret_direction} />
             {this.props.name}
           </button>
-          <span className="m-1 float-right badge badge-secondary">{this.props.count}</span>
+          <div className="m-1 float-right badge badge-secondary">{this.props.count}</div>
         </div>
 
         <div id={"collapse_" + this.props.id} className={"ml-3 pb-1 collapse " + this.show}>
@@ -189,7 +190,7 @@ export default class FleetDisplay extends React.Component {
 //    var fleet_elements = this.state.fleet.map((fleet_member) =>
 //      <div className="list-group-item">{fleet_member}</div>
 //    );
-    return <div className="list-group w-25">{fleet}</div>;
+    return <div className="list-group p-1 pr-2">{fleet}</div>;
   }
 }
 

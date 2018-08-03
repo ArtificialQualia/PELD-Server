@@ -1,10 +1,14 @@
 import 'bootstrap';
 import 'bootswatch/dist/darkly/bootstrap.min.css';
 import '../css/peld.css';
+import '../css/resizer.css';
 import React from "react";
 import ReactDOM from "react-dom";
 import FleetDisplay from "./fleetmembers";
 import io from 'socket.io-client';
+import SplitPane from "react-split-pane/index.js";
+import Pane from "react-split-pane/lib/Pane.js";
+import { Scrollbars } from 'react-custom-scrollbars';
 
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { faStar } from '@fortawesome/free-solid-svg-icons';
@@ -32,4 +36,16 @@ function register_handler(type) {
 export { handle_fleet_update };
 export { register_handler };
 
-ReactDOM.render(<FleetDisplay />, document.getElementById("content"));
+const content = (
+  <SplitPane split="vertical">
+    <Pane initialSize="25%" maxSize="49%">
+      <Scrollbars autoHide={true} autoHideDuration={500} renderThumbVertical={props => <div {...props} className="custom-scroll-vertical"/>} >
+        <FleetDisplay />
+      </Scrollbars>
+    </Pane>
+    <Pane>other stuff here</Pane>
+    <Pane initialSize="25%" maxSize="49%">fleet summary here</Pane>
+  </SplitPane>
+);
+
+ReactDOM.render(content, document.getElementById("content"));
