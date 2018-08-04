@@ -145,15 +145,17 @@ export default class FleetDisplay extends React.Component {
       return <div>{this.state.fleet}</div>;
     }
     var fleet = [];
+    var fleet_count = 0;
     if ('fleet_commander' in this.state.fleet) {
       fleet.push(<FleetMember key={this.state.fleet.fleet_commander.character_id} member={this.state.fleet.fleet_commander} />);
+      fleet_count += 1;
     }
     else {
       fleet.push(<div key="-1" className="list-group-item text-truncate">{FCChevron}(No FC)</div>);
     }
     for (var i=0; i < this.state.fleet.wings.length; i++){
       var wing = this.state.fleet.wings[i];
-      var squads = []
+      var squads = [];
       var wing_count = 0;
       if ('wing_commander' in wing) {
         squads.push(<FleetMember key={wing.wing_commander.character_id} member={wing.wing_commander} />);
@@ -186,11 +188,20 @@ export default class FleetDisplay extends React.Component {
         wing_count += squad_count;
       }
       fleet.push(<FleetGroup key={wing.id} id={wing.id} name={wing.name} children={squads} count={wing_count} />);
+      fleet_count += wing_count;
     }
-//    var fleet_elements = this.state.fleet.map((fleet_member) =>
-//      <div className="list-group-item">{fleet_member}</div>
-//    );
-    return <div className="list-group p-1 pr-2">{fleet}</div>;
+  return (
+    <span>
+      <div className="w-100 p-1 d-flex justify-content-between sticky-top border-bottom bg-light border-secondary">
+        <div></div>
+        <h5 className="m-0">Fleet Members</h5>
+        <div className="my-auto align-center float-right badge badge-secondary">{fleet_count}</div>
+      </div>
+      <div className="list-group p-1 pr-2">
+        {fleet}
+      </div>
+    </span>
+    );
   }
 }
 

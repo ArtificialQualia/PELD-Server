@@ -44,7 +44,6 @@ def background_fleet(user, sid):
     while True:
         id_filter = {'id': user.character_id}
         result = mongo.db.characters.find_one(id_filter)
-        print(result['sid'])
         if not result or result['sid'] != sid:
             raise Exception
         fleet = get_fleet(user)

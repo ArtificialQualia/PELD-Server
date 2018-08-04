@@ -5,6 +5,7 @@ import '../css/resizer.css';
 import React from "react";
 import ReactDOM from "react-dom";
 import FleetDisplay from "./fleetmembers";
+import FleetStats from "./fleetstats";
 import io from 'socket.io-client';
 import SplitPane from "react-split-pane/index.js";
 import Pane from "react-split-pane/lib/Pane.js";
@@ -44,7 +45,11 @@ const content = (
       </Scrollbars>
     </Pane>
     <Pane>other stuff here</Pane>
-    <Pane initialSize="25%" maxSize="49%">fleet summary here</Pane>
+    <Pane initialSize="25%" maxSize="49%">
+      <Scrollbars autoHide={true} autoHideDuration={500} renderThumbVertical={props => <div {...props} className="custom-scroll-vertical"/>} >
+        <FleetStats />
+      </Scrollbars>
+    </Pane>
   </SplitPane>
 );
 
