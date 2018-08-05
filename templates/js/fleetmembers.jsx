@@ -195,9 +195,9 @@ export default class FleetDisplay extends React.Component {
       <div className="w-100 p-1 d-flex justify-content-between sticky-top border-bottom bg-light border-secondary">
         <div></div>
         <h5 className="m-0">Fleet Members</h5>
-        <div className="my-auto align-center float-right badge badge-secondary">{fleet_count}</div>
+        <div className="my-auto mx-1 align-center float-right badge badge-secondary">{fleet_count}</div>
       </div>
-      <div className="list-group p-1 pr-2">
+      <div className="list-group p-2">
         {fleet}
       </div>
     </span>

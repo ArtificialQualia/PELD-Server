@@ -45,3 +45,7 @@ html, body {
     background-color: #375a7f;
     opacity: 0.8;
 }
+
+.title-text, .body-text {
+    cursor: text;
+}

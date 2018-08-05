@@ -1,63 +1,112 @@
 import React from "react";
+import ReactDOM from 'react-dom';
 import { handle_fleet_update } from "./index";
 import { register_handler } from "./index";
 
-function StatCard(props) {
-  var title = ""
-  if ( props.title ) {
-  title = <div className="card-header bg-light p-2">{props.title}</div>
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+
+function StatBadge(props){
+    return (
+      <div className="my-auto align-center badge badge-secondary ml-1" style={{fontSize: "85%"}}>
+        {props.number}
+      </div>
+    );
+}
+
+class StatCard extends React.Component {
+  constructor(props) {
+      super(props);
   }
-  var body = ""
-  if ( props.body ) {
-  body = (
-    <div className="card-body bg-light p-2">
-      <div className="card-text">{props.body}</div>
-    </div>
-  );
+
+  render() {
+    var title = ""
+    if ( this.props.title ) {
+    title = <div className="card-header bg-light p-2"><span className="title-text">{this.props.title}{this.props.number && <StatBadge number={this.props.number} />}</span></div>
+    }
+    var body = ""
+    if ( this.props.body ) {
+    body = (
+        <div className="card-body bg-light p-2">
+        <div className="card-text">
+          {this.props.body}
+        </div>
+        </div>
+    );
+    }
+    return (
+      <div>
+        <Draggable draggableId={this.props.title} index={this.props.index}>
+            {(provided, snapshot) => {
+
+            const onMouseDown = (() => {
+                if (!provided.dragHandleProps) {
+                    return onMouseDown;
+                }
+
+                return event => {
+                    if (["body-text","title-text"].indexOf(event.target.className) < 0 &&
+                        ["body-text","title-text"].indexOf(event.target.parentElement.className) < 0) {
+                    provided.dragHandleProps.onMouseDown(event);
+                    }
+                };
+                })();
+
+            return (
+                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} onMouseDown={onMouseDown} className="card bg-secondary mb-3 text-truncate">
+                        {title}
+                        {body}
+                    </div>
+                )}}
+        </Draggable>
+        {this.props.placeholder}
+      </div>
+    );
   }
-  return (
-    <div className="card bg-secondary mb-3 text-truncate">
-        {title}
-        {body}
-    </div>
-  );
 }
 
 function Location(props) {
     return (
-        <div>{props.location[0]}: 
-          <div className="my-auto align-center badge badge-secondary ml-1" style={{fontSize: "85%"}}>
-            {props.location[1]}
-          </div>
-        </div>
+        <span className="body-text">
+          {props.location[0]}: <StatBadge number={props.location[1]} />
+        </span>
     );
 }
 
-function LocationsCard(props) {
-    var elements = [];
-    for (var i=0; i < props.locations.length; i++) {
-      elements.push(<Location key={props.locations[i][0]} location={props.locations[i]} />);
+class LocationsCard extends React.Component {
+    constructor(props) {
+        super(props);
     }
-    return <StatCard  title="Locations:" body={elements} />;
+
+    render () {
+        var elements = [];
+        for (var i=0; i < this.props.locations.length; i++) {
+        elements.push(<Location key={this.props.locations[i][0]} location={this.props.locations[i]} />);
+        }
+        return <StatCard index={this.props.index} title="Locations:" body={elements} />;
+    }
 }
 
 function Ship(props) {
     return (
-        <div>{props.img}{props.ship[0]}: 
-          <div className="my-auto align-center badge badge-secondary ml-1" style={{fontSize: "85%"}}>
-            {props.ship[1]}
-          </div>
-        </div>
+        <span className="body-text">
+          {props.img}{props.ship[0]}: <StatBadge number={props.ship[1]} />
+        </span>
     );
 }
 
-function ShipsCard(props) {
-    var elements = [];
-    for (var i=0; i < props.ships.length; i++) {
-      var img = <img height="24px" width="24px" className="mr-1" src={"https://image.eveonline.com/Render/" + props.ship_ids[props.ships[i][0]] + "_32.png"} />;
-      elements.push(<Ship key={props.ships[i][0]} ship={props.ships[i]} img={img} />);
+class ShipsCard extends React.Component {
+    constructor(props) {
+        super(props);
     }
-    return <StatCard  title="Ship Types:" body={elements} />;
+
+    render() {
+        var elements = [];
+        for (var i=0; i < this.props.ships.length; i++) {
+        var img = <img height="24px" width="24px" className="mr-1" src={"https://image.eveonline.com/Render/" + this.props.ship_ids[this.props.ships[i][0]] + "_32.png"} />;
+        elements.push(<Ship key={this.props.ships[i][0]} ship={this.props.ships[i]} img={img} />);
+        }
+        return <StatCard index={this.props.index} title="Ship Types:" body={elements} />;
+    }
 }
 
 function sortDict(dict) {
@@ -72,42 +121,46 @@ function sortDict(dict) {
     return items;
 }
 
+const reorder = (list, startIndex, endIndex) => {
+  const result = Array.from(list);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+
+  return result;
+};
+
 export default class FleetStats extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { fleet: 'Getting fleet data...' };
+    this.state = { cards: [], fleet_number: 0, pelds_number: 0, locations: [], ships: [], ship_ids: [] };
+    this.update = true;
     handle_fleet_update((data) => {
-      this.setState({ fleet: JSON.parse(data) });
-    });
-  }
-
-  addToStat(items, item) {
-      if (item in items) {
-          items[item] += 1;
+      if (this.update) {
+        this.fleetUpdate(JSON.parse(data));
       }
       else {
-          items[item] = 1;
+          console.log('not updating')
       }
+    });
+    this.onDragEnd = this.onDragEnd.bind(this);
+    this.onDragStart = this.onDragStart.bind(this);
   }
 
-  render () {
-    if ( this.state.fleet == "Getting fleet data..." ) {
-      return <div>{this.state.fleet}</div>;
-    }
+  fleetUpdate(fleet) {
     var fleet_locations = {};
     var fleet_ships = {};
     var fleet_ship_ids = {};
     var fleet_count = 0;
-    if ('fleet_commander' in this.state.fleet) {
-      this.addToStat(fleet_locations, this.state.fleet['fleet_commander']['location_name'])
-      this.addToStat(fleet_ships, this.state.fleet['fleet_commander']['ship_name'])
-      fleet_ship_ids[this.state.fleet['fleet_commander']['ship_name']] = this.state.fleet['fleet_commander']['ship_type_id']
+    if ('fleet_commander' in fleet) {
+      this.addToStat(fleet_locations, fleet['fleet_commander']['location_name'])
+      this.addToStat(fleet_ships, fleet['fleet_commander']['ship_name'])
+      fleet_ship_ids[fleet['fleet_commander']['ship_name']] = fleet['fleet_commander']['ship_type_id']
       fleet_count += 1;
     }
     else {
     }
-    for (var i=0; i < this.state.fleet.wings.length; i++){
-      var wing = this.state.fleet.wings[i];
+    for (var i=0; i < fleet.wings.length; i++){
+      var wing = fleet.wings[i];
       var squads = [];
       if ('wing_commander' in wing) {
         this.addToStat(fleet_locations, wing['wing_commander']['location_name'])
@@ -142,15 +195,95 @@ export default class FleetStats extends React.Component {
     }
     fleet_locations = sortDict(fleet_locations);
     fleet_ships = sortDict(fleet_ships);
+    if (this.state.cards.length == 0) {
+      this.state.cards.push(<StatCard index={0} key="In fleet" title="In fleet: " number={this.state.fleet_number} />);
+      this.state.cards.push(<StatCard index={1} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} />);
+      this.state.cards.push(<LocationsCard index={2} key="Locations" locations={this.state.locations} />);
+      this.state.cards.push(<ShipsCard index={3} key="Ship Types" ships={this.state.ships} ship_ids={this.state.ship_ids} />);
+    }
+    if (this.update) {
+        this.setState({
+            fleet_number: fleet_count,
+            pelds_number: "0/0",
+            locations: fleet_locations,
+            ships: fleet_ships,
+            ship_ids: fleet_ship_ids
+        });
+    }
+  }
+
+  addToStat(items, item) {
+      if (item in items) {
+          items[item] += 1;
+      }
+      else {
+          items[item] = 1;
+      }
+  }
+
+  onDragEnd(result) {
+    // dropped outside the list
+    if (!result.destination) {
+      return;
+    }
+
+    const cards = reorder(
+      this.state.cards,
+      result.source.index,
+      result.destination.index
+    );
+    
+    this.setState({
+      cards: cards
+    });
+
+    this.update = true;
+  }
+
+  onDragStart() {
+    this.update = false;
+  }
+
+  render () {
+    if ( this.state.cards.length == 0 ) {
+      return <div>Getting fleet data...</div>;
+    }
+    var new_cards = [];
+    for (var i=0; i < this.state.cards.length; i++) {
+        switch (this.state.cards[i].key) {
+            case "In fleet":
+              new_cards.push(<StatCard index={i} key="In fleet" title="In fleet: " number={this.state.fleet_number} />);
+              break;
+            case "PELDs Connected":
+              new_cards.push(<StatCard index={i} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} />);
+              break;
+            case "Locations":
+              new_cards.push(<LocationsCard index={i} key="Locations" locations={this.state.locations} />);
+              break;
+            case "Ship Types":
+              new_cards.push(<ShipsCard index={i} key="Ship Types" ships={this.state.ships} ship_ids={this.state.ship_ids} />);
+              break;
+            default:
+              break;
+        }
+    }
+    this.state.cards = new_cards;
     return (
       <span>
         <div className="w-100 p-1 mb-2 text-center sticky-top border-bottom bg-light border-secondary text-truncate">
             <h5 className="m-0">Fleet Stats</h5>
         </div>
         <div className="p-2">
-            <StatCard title={"In fleet: " + fleet_count} />
-            <LocationsCard locations={fleet_locations} />
-            <ShipsCard ships={fleet_ships} ship_ids={fleet_ship_ids} />
+          <DragDropContext onDragStart={this.onDragStart} onDragEnd={this.onDragEnd}>
+            <Droppable droppableId="statDrop" updateYo={this.state}>
+                {(provided, snapshot) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {this.state.cards}
+                  {provided.placeholder}
+                </div>
+                )}
+            </Droppable>
+          </DragDropContext>
         </div>
       </span>
     );
