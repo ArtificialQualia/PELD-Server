@@ -88,9 +88,11 @@ class LocationsCard extends React.Component {
 
 function Ship(props) {
     return (
-        <span className="body-text">
+        <div>
+          <span className="body-text">
           {props.img}{props.ship[0]}: <StatBadge number={props.ship[1]} />
-        </span>
+          </span>
+        </div>
     );
 }
 
@@ -137,9 +139,6 @@ export default class FleetStats extends React.Component {
     handle_fleet_update((data) => {
       if (this.update) {
         this.fleetUpdate(JSON.parse(data));
-      }
-      else {
-          console.log('not updating')
       }
     });
     this.onDragEnd = this.onDragEnd.bind(this);

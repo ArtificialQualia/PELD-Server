@@ -39,6 +39,7 @@ class User(UserMixin):
         self.access_token = user_data['tokens']['access_token']
         self.refresh_token = user_data['tokens']['refresh_token']
         self.access_token_expires = user_data['tokens']['access_token_expires']
+        self.fleet_id = user_data.get('fleet_id', None)
         
         
     def get_id(self):
@@ -54,6 +55,16 @@ class User(UserMixin):
                 self.access_token_expires - datetime.utcnow()
             ).total_seconds()
         }
+        
+    def set_fleet_id(self, _id):
+        character_filter = {'id': self.character_id}
+        update = {
+            '$set': {
+                'fleet_id': _id
+            }
+        }
+        self.mongo.db.characters.find_one_and_update(character_filter, update)
+        self.fleet_id = _id
 
     def update_token(self, token_response):
         """ helper function to update token data from SSO response """

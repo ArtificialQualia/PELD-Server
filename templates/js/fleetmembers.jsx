@@ -1,6 +1,7 @@
 import React from "react";
 import { handle_fleet_update } from "./index";
 import { register_handler } from "./index";
+import { socket } from "./index";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const FCChevron = (
@@ -27,47 +28,56 @@ const SCChevron = (
   </svg>
 );
 
-//const BossStar = (
-//  <svg className="align-middle mr-1" height="16" width="16" viewBox="0 0 200 200">
-//    <polygon points="100,10 40,198 190,78 10,78 160,198" className="star" />
-//  </svg>
-//);
+class FleetMember extends React.Component {
+  constructor(props) {
+    super(props);
+  }
 
-function FleetMember(props) {
-  var chevron = ""
-  var star = ""
-  if (props.member.role_name.startsWith('Fleet Commander')) {
-    chevron = FCChevron;
+  kick(_id, event) {
+    socket.emit('kick', _id)
   }
-  else if (props.member.role_name.startsWith('Wing Commander')) {
-    chevron = WCChevron;
-  }
-  else if (props.member.role_name.startsWith('Squad Commander')) {
-    chevron = SCChevron;
-  }
-  if (props.member.role_name.endsWith('(Boss)')) {
-    star = <FontAwesomeIcon className="star mr-1" icon="star" />;
-  }
-  return (
-    <div className={"list-group-item list-group-item-action " + props.indent}>
-      <span className="d-flex w-100 justify-content-between">
-        <div className="text-truncate">
-          {chevron}{star}
-          <span className="">{props.member.character_name}</span>
+
+  render() {
+    var chevron = ""
+    var star = ""
+    if (this.props.member.role_name.startsWith('Fleet Commander')) {
+      chevron = FCChevron;
+    }
+    else if (this.props.member.role_name.startsWith('Wing Commander')) {
+      chevron = WCChevron;
+    }
+    else if (this.props.member.role_name.startsWith('Squad Commander')) {
+      chevron = SCChevron;
+    }
+    if (this.props.member.role_name.endsWith('(Boss)')) {
+      star = <FontAwesomeIcon className="star mr-1" icon="star" />;
+    }
+    return (
+      <div className={"dropdown list-group-item list-group-item-action " + this.props.indent} ref={"fleet_member_"+this.props.member.character_id}>
+        <div data-toggle="dropdown">
+          <span className="d-flex w-100 justify-content-between">
+            <div className="text-truncate">
+              {chevron}{star}
+              <span className="">{this.props.member.character_name}</span>
+            </div>
+            <small className="text-nowrap align-top">PELD: <FontAwesomeIcon className="ml-1 red" icon="times" /></small>
+          </span>
+          <span className="align-middle d-flex w-100 justify-content-between">
+            <div className="text-truncate">
+              <img className="mr-1" src={"https://image.eveonline.com/Render/" + this.props.member.ship_type_id + "_32.png"} width="16" height="16" />
+              <small>{this.props.member.ship_name}</small>
+            </div>
+            <div className="text-nowrap">
+              <small className="align-middle">{this.props.member.location_name}</small>
+            </div>
+          </span>
         </div>
-        <small className="text-nowrap align-top">PELD: <FontAwesomeIcon className="ml-1 red" icon="times" /></small>
-      </span>
-      <span className="align-middle d-flex w-100 justify-content-between">
-        <div className="text-truncate">
-          <img className="mr-1" src={"https://image.eveonline.com/Render/" + props.member.ship_type_id + "_32.png"} width="16" height="16" />
-          <small>{props.member.ship_name}</small>
+        <div className="dropdown-menu dropdown-menu-right">
+          <button className="dropdown-item text-danger" type="button" onClick={this.kick.bind(this, this.props.member.character_id)}>Kick from fleet</button>
         </div>
-        <div className="text-nowrap">
-          <small className="align-middle">{props.member.location_name}</small>
-        </div>
-      </span>
-    </div>
-  );
+      </div>
+    );
+  }
 }
 
 class FleetGroup extends React.Component {
@@ -194,7 +204,7 @@ export default class FleetDisplay extends React.Component {
     <span>
       <div className="w-100 p-1 d-flex justify-content-between sticky-top border-bottom bg-light border-secondary">
         <div></div>
-        <h5 className="m-0">Fleet Members</h5>
+        <h5 className="m-0 text-truncate">Fleet Members</h5>
         <div className="my-auto mx-1 align-center float-right badge badge-secondary">{fleet_count}</div>
       </div>
       <div className="list-group p-2">

@@ -6,6 +6,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import FleetDisplay from "./fleetmembers";
 import FleetStats from "./fleetstats";
+import ErrorAlert from "./erroralert";
 import io from 'socket.io-client';
 import SplitPane from "react-split-pane/index.js";
 import Pane from "react-split-pane/lib/Pane.js";
@@ -36,6 +37,7 @@ function register_handler(type) {
 
 export { handle_fleet_update };
 export { register_handler };
+export { socket };
 
 const content = (
   <SplitPane split="vertical">
@@ -54,3 +56,6 @@ const content = (
 );
 
 ReactDOM.render(content, document.getElementById("content"));
+ReactDOM.render(<ErrorAlert />, document.getElementById("error"))
+
+import '../css/unhide.css';

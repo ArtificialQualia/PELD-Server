@@ -8,7 +8,6 @@ html, body {
 
 .list-group-item {
     padding: 0.375rem 0.625rem;
-    overflow: hidden;
 }
 
 .list-group-item-action {
@@ -48,4 +47,11 @@ html, body {
 
 .title-text, .body-text {
     cursor: text;
+}
+
+#error {
+    z-index: 9999;
+    position: fixed;
+    top: 65px;
+    pointer-events: none;
 }

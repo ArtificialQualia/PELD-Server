@@ -4,8 +4,6 @@
 """
 
 import pymongo
-import bson
-from bson import json_util
 
 from flask import render_template
 from flask import url_for
@@ -16,6 +14,8 @@ from flask import Blueprint
 
 from flask_login import current_user
 from flask_login import login_required
+
+from flask_socketio import emit
 
 import config
 from app.flask_shared_modules import mongo
@@ -28,27 +28,30 @@ from app.flask_shared_modules import esisecurity
 from requests import exceptions
 from esipy.exceptions import APIException
 
-import re
 import json
 import copy
-from collections import OrderedDict
-from datetime import datetime
-from datetime import timezone
+import logging
 import pyswagger
 
 main_pages = Blueprint('main_pages', __name__)
 
-thread = None
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
 def background_fleet(user, sid):
     while True:
         id_filter = {'id': user.character_id}
         result = mongo.db.characters.find_one(id_filter)
         if not result or result['sid'] != sid:
-            raise Exception
-        fleet = get_fleet(user)
-        print(sid)
-        socketio.emit('fleet_update', json.dumps(fleet, default=json_serial), room=sid)
+            logging.error('sid changed, exiting background update for: ' + str(sid))
+            return
+        try:
+            fleet = get_fleet(user)
+            socketio.emit('fleet_update', json.dumps(fleet, default=json_serial), room=sid)
+        except EsiError as e:
+            socketio.emit('error', str(e), room=sid)
+        except EsiException as e:
+            socketio.emit('exception', str(e), room=sid)
+            return
         socketio.sleep(5)
 
 @main_pages.route("/")
@@ -58,19 +61,35 @@ def index():
 
 @socketio.on('connect')
 def handle_message():
-    print('Client connected')
+    logging.debug('client connected')
 
+@socketio.on('kick')
+def handle_kick(_id):
+    update_token(current_user)
+    op = esiapp.op['delete_fleets_fleet_id_members_member_id'](
+        member_id=_id,
+        fleet_id=current_user.fleet_id
+    )
+    request = esiclient.request(op)
+    if request.status != 204:
+        logging.error('error performing kick for ' + str(_id))
+        logging.error('error is: ' + request.data['error'])
+        emit('error', request.data['error'])
+    
 @socketio.on('register_fleet_handler')
 def handle_fleet():
-    print('handlign fleet')
-    check_fleet()
+    try:
+        check_fleet()
+    except EsiError as e:
+        emit('exception', str(e))
+        return
+    except EsiException as e:
+        emit('exception', str(e))
+        return
     user = copy.copy(current_user)
     sid = request.sid
     add_db_sid(current_user.character_id, sid)
-    global thread
-    if thread is None:
-        pass
-    thread = socketio.start_background_task(target=lambda: background_fleet(user, sid))
+    socketio.start_background_task(target=lambda: background_fleet(user, sid))
     
 def json_serial(obj):
     """JSON serializer for objects not serializable by default json code"""
@@ -81,7 +100,7 @@ def json_serial(obj):
     
 @socketio.on('disconnect')
 def test_disconnect():
-    print('Client disconnected')
+    logging.debug('Client disconnected')
 
 def check_fleet():
     update_token(current_user)
@@ -90,11 +109,13 @@ def check_fleet():
         character_id=current_user.get_id()
     )
     fleet = esiclient.request(op)
-    if fleet.status == 404:
-        print('not in fleet')
-    elif fleet.status != 200:
-        print('error getting fleet status for ' + str(current_user.get_id()))
-    current_user.fleet_id = fleet.data['fleet_id']
+    if fleet.status != 200:
+        logging.error('error getting fleet for: ' + str(current_user.get_id()))
+        logging.error('error is: ' + fleet.data['error'])
+        emit('exception', fleet.data['error'])
+        return False
+    current_user.set_fleet_id(fleet.data['fleet_id'])
+    return True
 
 def get_fleet(current_user):
     fleet = {'name': 'Fleet'}
@@ -125,12 +146,17 @@ def get_fleet_members(current_user):
         fleet_id=current_user.fleet_id
     )
     fleet = esiclient.request(op)
-    if fleet.status == 404:
-        print('no fleet boss')
-        return None
-    elif fleet.status != 200:
-        print('error getting fleet members for ' + str(current_user.get_id()))
-        return None
+    if fleet.status >= 400 and fleet.status < 500:
+        logging.error('error getting fleet members for: ' + str(current_user.get_id()))
+        logging.error('error is: ' + fleet.data['error'])
+        if fleet.status == 404:
+            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool, blame CCP)')
+        else:
+            raise EsiException(fleet.data['error'])
+    elif fleet.status >= 500:
+        logging.error('error getting fleet members for: ' + str(current_user.get_id()))
+        logging.error('error is: ' + fleet.data['error'])
+        raise EsiError(fleet.data['error'])
     return fleet.data
 
 def get_fleet_wings(current_user):
@@ -139,12 +165,17 @@ def get_fleet_wings(current_user):
         fleet_id=current_user.fleet_id
     )
     fleet = esiclient.request(op)
-    if fleet.status == 404:
-        print('no fleet boss')
-        return None
-    elif fleet.status != 200:
-        print('error getting fleet wings for ' + str(current_user.get_id()))
-        return None
+    if fleet.status >= 400 and fleet.status < 500:
+        logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
+        logging.error('error is: ' + fleet.data['error'])
+        if fleet.status == 404:
+            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool, blame CCP)')
+        else:
+            raise EsiException(fleet.data['error'])
+    elif fleet.status >= 500:
+        logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
+        logging.error('error is: ' + fleet.data['error'])
+        raise EsiError(fleet.data['error'])
     return fleet.data
 
 def decode_fleet_member(member):
@@ -169,8 +200,9 @@ def decode_character_id(_id):
     )
     request = esiclient.request(op)
     if request.status != 200:
-        print('error getting character data for ' + str(_id))
-        return None
+        logging.error('error getting public character data for: ' + str(_id))
+        logging.error('error is: ' + request.data['error'])
+        raise EsiError(request.data['error'])
     add_db_entity(_id, request.data['name'])
     return request.data['name']
 
@@ -199,8 +231,9 @@ def decode_ship_id(_id):
     )
     request = esiclient.request(op)
     if request.status != 200:
-        print('error getting ship data for ' + str(_id))
-        return None
+        logging.error('error getting ship data for: ' + str(_id))
+        logging.error('error is: ' + request.data['error'])
+        raise EsiError(request.data['error'])
     add_db_entity(_id, request.data['name'])
     return request.data['name']
 
@@ -214,24 +247,25 @@ def decode_system_id(_id):
     )
     request = esiclient.request(op)
     if request.status != 200:
-        print('error getting system data for ' + str(_id))
-        return None
+        logging.error('error getting system data for: ' + str(_id))
+        logging.error('error is: ' + request.data['error'])
+        raise EsiError(request.data['error'])
     add_db_entity(_id, request.data['name'])
     return request.data['name']
 
 def update_token(current_user):
     sso_data = current_user.get_sso_data()
     esisecurity.update_token(sso_data)
-    if sso_data['expires_in'] <= 5:
+    if sso_data['expires_in'] <= 5000:
         try:
             tokens = esisecurity.refresh()
         except exceptions.SSLError:
-            print('ssl error refreshing token for ' + str(current_user.get_id()))
-            return False
+            logging.error('ssl error refreshing token for: ' + str(current_user.get_id()))
+            raise EsiError('ssl error refreshing token')
         except APIException as e:
-            print('error refreshing token for: ' + str(current_user.get_id()))
-            print('error is: ' + str(e))
-            return False
+            logging.error('error refreshing token for: ' + str(current_user.get_id()))
+            logging.error('error is: ' + str(e))
+            raise EsiException(e)
         current_user.update_token(tokens)
     return True
     
@@ -239,29 +273,6 @@ def update_token(current_user):
 @main_pages.route('/faq')
 def faq():
     return render_template('faq.html')
-
-@main_pages.route('/account')
-@login_required
-def account():
-    """ account management page, includes ESI scopes management.  Removes specified scopes when a query string is passed. """
-    character_filter = {'id': current_user.character_id}
-    character_data = mongo.db.entities.find_one_or_404(character_filter)
-    scopes_list = character_data['scopes'].split()
-    
-    # if a proper query string was passed, remove the named scope from the user's DB entry
-    remove_scope = request.args.get('remove_scope')
-    if remove_scope is not None:
-        data_to_update = {}
-        for scope in scopes_list:
-            if scope == remove_scope:
-                scopes_list.remove(scope)
-        data_to_update['scopes'] = " ".join(scopes_list)
-        update = {"$set": data_to_update}
-        character_data = mongo.db.entities.find_one_and_update(character_filter, update, return_document=pymongo.ReturnDocument.AFTER)
-        scopes_list = character_data['scopes'].split()
-    
-    character_data['scopes'] = scopes_list
-    return render_template('account.html', user=character_data)
             
 def make_img_url(entry_type, entry_id):
     """ helper to create image urls that come from the EVE images server """
@@ -289,3 +300,9 @@ def redis_bytes_to_data(redis_object):
         else:
             decoded_object[key.decode('utf-8')] = value.decode('utf-8')
     return decoded_object
+
+class EsiError(Exception):
+    pass
+
+class EsiException(Exception):
+    pass
