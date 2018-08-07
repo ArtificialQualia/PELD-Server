@@ -12,7 +12,11 @@ html, body {
 
 .list-group-item-action {
     width: auto;
-    cursor: pointer;
+    cursor: pointer !important;
+}
+
+.list-group-item-action:active {
+    background-color: #666;
 }
 
 .list-group-item-container {
@@ -45,8 +49,17 @@ html, body {
     opacity: 0.8;
 }
 
-.title-text, .body-text {
-    cursor: text;
+.title-text, .body-text, .selectable-text {
+    cursor: text !important;
+}
+
+.fleet-member {
+    cursor: -webkit-grab !important;
+    cursor: grab !important;
+}
+
+.fleet-placeholder {
+    cursor: default !important;
 }
 
 #error {

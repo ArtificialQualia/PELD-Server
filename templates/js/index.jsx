@@ -4,9 +4,9 @@ import '../css/peld.css';
 import '../css/resizer.css';
 import React from "react";
 import ReactDOM from "react-dom";
-import FleetDisplay from "./fleetmembers";
+import FleetDisplay from "./fleetdisplay";
 import FleetStats from "./fleetstats";
-import ErrorAlert from "./erroralert";
+import Alert from "./alert";
 import io from 'socket.io-client';
 import SplitPane from "react-split-pane/index.js";
 import Pane from "react-split-pane/lib/Pane.js";
@@ -24,19 +24,10 @@ library.add(faCaretRight)
 
 var socket = io();
 
-function handle_fleet_update(cb) {
-  socket.on('fleet_update', (data) => {
-    console.log(data);
-    cb(data);
-  });
-};
+socket.on('reconnect', (attemptNumber) => {
+  socket.emit('register_fleet_handler');
+});
 
-function register_handler(type) {
-  socket.emit(type)
-}
-
-export { handle_fleet_update };
-export { register_handler };
 export { socket };
 
 const content = (
@@ -56,6 +47,6 @@ const content = (
 );
 
 ReactDOM.render(content, document.getElementById("content"));
-ReactDOM.render(<ErrorAlert />, document.getElementById("error"))
+ReactDOM.render(<Alert />, document.getElementById("error"))
 
 import '../css/unhide.css';

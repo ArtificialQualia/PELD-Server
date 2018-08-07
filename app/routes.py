@@ -75,6 +75,32 @@ def handle_kick(_id):
         logging.error('error performing kick for ' + str(_id))
         logging.error('error is: ' + request.data['error'])
         emit('error', request.data['error'])
+    emit('info', 'member kicked')
+
+@socketio.on('move')
+def handle_move(info):
+    if info['role'] == 'squad_commander':
+        emit('error', "Due to a CCP bug, squad commanders can't be set via ESI.  See: https://github.com/esi/esi-issues/issues/690")
+        return
+    movement = {'role': info['role']}
+    if info['squad'] > 0:
+        movement['squad_id'] = info['squad']
+    if info['wing'] > 0:
+        movement['wing_id'] = info['wing']
+    print(movement)
+    update_token(current_user)
+    op = esiapp.op['put_fleets_fleet_id_members_member_id'](
+        member_id=info['id'],
+        fleet_id=current_user.fleet_id,
+        movement=movement
+    )
+    request = esiclient.request(op)
+    if request.status != 204:
+        logging.error('error performing move for ' + str(info['id']))
+        logging.error('error is: ' + request.data['error'])
+        emit('error', request.data['error'])
+        return
+    emit('info', info['name']+' moved to '+info['role'])
     
 @socketio.on('register_fleet_handler')
 def handle_fleet():
@@ -112,10 +138,8 @@ def check_fleet():
     if fleet.status != 200:
         logging.error('error getting fleet for: ' + str(current_user.get_id()))
         logging.error('error is: ' + fleet.data['error'])
-        emit('exception', fleet.data['error'])
-        return False
+        raise EsiException(fleet.data['error'])
     current_user.set_fleet_id(fleet.data['fleet_id'])
-    return True
 
 def get_fleet(current_user):
     fleet = {'name': 'Fleet'}
@@ -176,6 +200,9 @@ def get_fleet_wings(current_user):
         logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
         logging.error('error is: ' + fleet.data['error'])
         raise EsiError(fleet.data['error'])
+    fleet.data.sort(key=lambda x: x['id'])
+    for wing in fleet.data:
+        wing['squads'].sort(key=lambda x: x['id'])
     return fleet.data
 
 def decode_fleet_member(member):
@@ -262,7 +289,7 @@ def update_token(current_user):
         except exceptions.SSLError:
             logging.error('ssl error refreshing token for: ' + str(current_user.get_id()))
             raise EsiError('ssl error refreshing token')
-        except APIException as e:
+        except Exception as e:
             logging.error('error refreshing token for: ' + str(current_user.get_id()))
             logging.error('error is: ' + str(e))
             raise EsiException(e)

@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from 'react-dom';
-import { handle_fleet_update } from "./index";
-import { register_handler } from "./index";
+import { socket } from "./index";
 
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
@@ -34,7 +33,6 @@ class StatCard extends React.Component {
     );
     }
     return (
-      <div>
         <Draggable draggableId={this.props.title} index={this.props.index}>
             {(provided, snapshot) => {
 
@@ -58,8 +56,6 @@ class StatCard extends React.Component {
                     </div>
                 )}}
         </Draggable>
-        {this.props.placeholder}
-      </div>
     );
   }
 }
@@ -136,7 +132,7 @@ export default class FleetStats extends React.Component {
     super(props);
     this.state = { cards: [], fleet_number: 0, pelds_number: 0, locations: [], ships: [], ship_ids: [] };
     this.update = true;
-    handle_fleet_update((data) => {
+    socket.on('fleet_update', (data) => {
       if (this.update) {
         this.fleetUpdate(JSON.parse(data));
       }
@@ -203,7 +199,7 @@ export default class FleetStats extends React.Component {
     if (this.update) {
         this.setState({
             fleet_number: fleet_count,
-            pelds_number: "0/0",
+            pelds_number: "0/"+fleet_count,
             locations: fleet_locations,
             ships: fleet_ships,
             ship_ids: fleet_ship_ids
@@ -273,8 +269,8 @@ export default class FleetStats extends React.Component {
             <h5 className="m-0">Fleet Stats</h5>
         </div>
         <div className="p-2">
-          <DragDropContext onDragStart={this.onDragStart} onDragEnd={this.onDragEnd}>
-            <Droppable droppableId="statDrop" updateYo={this.state}>
+          <DragDropContext onDragStart={this.onDragStart} onDragEnd={this.onDragEnd} type="FLEET_MEMBER">
+            <Droppable droppableId="statDrop">
                 {(provided, snapshot) => (
                 <div ref={provided.innerRef} {...provided.droppableProps}>
                   {this.state.cards}

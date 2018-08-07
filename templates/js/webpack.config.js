@@ -29,7 +29,8 @@ const config = {
             {
               loader: 'babel-loader',
               options: {
-                presets: ['react']
+                presets: ['react'],
+                plugins: ["transform-decorators-legacy"]
               }
             }
           ],
