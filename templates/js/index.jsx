@@ -6,6 +6,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import FleetDisplay from "./fleetdisplay";
 import FleetStats from "./fleetstats";
+import PeldDisplay from "./pelddisplay";
 import Alert from "./alert";
 import io from 'socket.io-client';
 import SplitPane from "react-split-pane/index.js";
@@ -37,8 +38,10 @@ const content = (
         <FleetDisplay />
       </Scrollbars>
     </Pane>
-    <Pane>other stuff here</Pane>
-    <Pane initialSize="25%" maxSize="49%">
+    <Pane>
+      <PeldDisplay />
+    </Pane>
+    <Pane initialSize="20%" maxSize="49%">
       <Scrollbars autoHide={true} autoHideDuration={500} renderThumbVertical={props => <div {...props} className="custom-scroll-vertical"/>} >
         <FleetStats />
       </Scrollbars>
