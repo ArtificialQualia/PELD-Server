@@ -11,13 +11,16 @@ from flask import abort
 from flask import request
 from flask import jsonify
 from flask import Blueprint
+from flask import session
 
 from flask_login import current_user
 from flask_login import login_required
 
 from flask_socketio import emit
+from flask_socketio import disconnect
 
 import config
+from app.user import User
 from app.flask_shared_modules import mongo
 #from app.flask_shared_modules import r
 from app.flask_shared_modules import socketio
@@ -26,12 +29,21 @@ from app.flask_shared_modules import esiclient
 from app.flask_shared_modules import esisecurity
 
 from requests import exceptions
-from esipy.exceptions import APIException
 
 import json
 import copy
 import logging
 import pyswagger
+import functools
+
+def authenticated_only(f):
+    @functools.wraps(f)
+    def wrapped(*args, **kwargs):
+        if not current_user.is_authenticated:
+            disconnect()
+        else:
+            return f(*args, **kwargs)
+    return wrapped
 
 main_pages = Blueprint('main_pages', __name__)
 
@@ -54,16 +66,42 @@ def background_fleet(user, sid):
             return
         socketio.sleep(5)
 
-@main_pages.route("/")
+@main_pages.route("/app")
 @login_required
+def main_app():
+    return render_template("app.html")
+
+@main_pages.route("/")
 def index():
     return render_template("index.html")
 
 @socketio.on('connect')
-def handle_message():
+def handle_connect():
     logging.debug('client connected')
 
+@socketio.on('connect', namespace='/client')
+def handle_client_connect():
+    logging.debug('client in /client connected')
+    
+@socketio.on('disconnect')
+def handle_disconnect():
+    logging.debug('Client disconnected')
+    
+@socketio.on('disconnect', namespace='/client')
+def handle_client_disconnect():
+    _filter = {'socket_guid': request.cookies['socket_guid']}
+    doc = mongo.db.characters.find_one(_filter)
+    if doc != None and doc['client_sid'] == request.sid:
+        docs = mongo.db.fleets.find({'members': doc['id']})
+        if docs is None:
+            return
+        for fleet in docs:
+            if fleet['connected_members'] is not None and doc['id'] in fleet['connected_members']:
+                update = {'$set': {'connected_members': fleet['connected_members'].remove(doc['id'])}}
+                mongo.db.fleets.update_one({'id': fleet['id']}, update)
+
 @socketio.on('kick')
+@authenticated_only
 def handle_kick(_id):
     update_token(current_user)
     op = esiapp.op['delete_fleets_fleet_id_members_member_id'](
@@ -75,9 +113,11 @@ def handle_kick(_id):
         logging.error('error performing kick for ' + str(_id))
         logging.error('error is: ' + request.data['error'])
         emit('error', request.data['error'])
+        return
     emit('info', 'member kicked')
 
 @socketio.on('move')
+@authenticated_only
 def handle_move(info):
     if info['role'] == 'squad_commander':
         emit('error', "Due to a CCP bug, squad commanders can't be set via ESI.  See: https://github.com/esi/esi-issues/issues/690")
@@ -102,7 +142,53 @@ def handle_move(info):
         return
     emit('info', info['name']+' moved to '+info['role'])
     
+@socketio.on('register_client', namespace='/client')
+def register_client():
+    _filter = {'socket_guid': request.cookies['socket_guid']}
+    doc = mongo.db.characters.find_one(_filter)
+    if doc != None and doc['name'] == request.cookies['name']:
+        _filter = {'id': doc['id']}
+        data_to_update = {}
+        data_to_update['client_sid'] = request.sid
+        update = {"$set": data_to_update}
+        mongo.db.characters.update_one(_filter, update)
+        session['user'] = User(character_id=doc['id'], mongo=mongo)
+        emit('client_registered')
+    
+@socketio.on('peld_data', namespace='/client')
+def handle_peld_data(entry):
+    entry['name'] = request.cookies['name']
+    fleet_function = lambda x: socketio.emit('peld_data', json.dumps(entry), room=x, namespace=None)
+    process_incoming_peld(fleet_function)
+    
+@socketio.on('peld_check', namespace='/client')
+def handle_peld_check():
+    process_incoming_peld()
+            
+def process_incoming_peld(fleet_function=None):
+    try:
+        _id = session['user'].character_id
+    except KeyError:
+        _filter = {'socket_guid': request.cookies['socket_guid']}
+        doc = mongo.db.characters.find_one(_filter)
+        if doc != None and doc['name'] == request.cookies['name']:
+            _id = doc['id']
+            session['user'] = User(character_id=doc['id'], mongo=mongo)
+        else:
+            return
+    docs = mongo.db.fleets.find({'members': _id})
+    if docs is None:
+        return
+    for fleet in docs:
+        if _id not in fleet['connected_members']:
+            members = fleet['connected_members'] or [_id]
+            update = {'$set': {'connected_members': members}}
+            mongo.db.fleets.update_one({'id': fleet['id']}, update)
+        if fleet_function is not None:
+            fleet_function(fleet['fc_sid'])
+
 @socketio.on('register_fleet_handler')
+@authenticated_only
 def handle_fleet():
     try:
         check_fleet()
@@ -112,6 +198,7 @@ def handle_fleet():
     except EsiException as e:
         emit('exception', str(e))
         return
+    current_user.sid = request.sid
     user = copy.copy(current_user)
     sid = request.sid
     add_db_sid(current_user.character_id, sid)
@@ -123,10 +210,6 @@ def json_serial(obj):
     if isinstance(obj, pyswagger.primitives._time.Datetime):
         return obj.to_json()
     raise TypeError ("Type %s not serializable" % type(obj))
-    
-@socketio.on('disconnect')
-def test_disconnect():
-    logging.debug('Client disconnected')
 
 def check_fleet():
     update_token(current_user)
@@ -145,9 +228,10 @@ def get_fleet(current_user):
     fleet = {'name': 'Fleet'}
     fleet['wings'] = get_fleet_wings(current_user)
     fleet['wings'] = sorted(fleet['wings'], key=lambda e:e['id'])
-    fleet_members = get_fleet_members(current_user)
+    fleet_members, connected_list = get_fleet_members(current_user)
     for member in fleet_members:
         decoded_member = decode_fleet_member(member.copy())
+        decoded_member['peld_connected'] = decoded_member['character_id'] in connected_list
         if member['squad_id'] == -1 and member['wing_id'] == -1:
             fleet['fleet_commander'] = decoded_member
         for wing in fleet['wings']:
@@ -181,7 +265,25 @@ def get_fleet_members(current_user):
         logging.error('error getting fleet members for: ' + str(current_user.get_id()))
         logging.error('error is: ' + fleet.data['error'])
         raise EsiError(fleet.data['error'])
-    return fleet.data
+    _filter = {'id': current_user.fleet_id}
+    new_members = [member['character_id'] for member in fleet.data]
+    data_to_update = {}
+    doc = mongo.db.fleets.find_one(_filter)
+    if doc is not None and doc['connected_members'] is not None:
+        for member in doc['connected_members']:
+            if member not in new_members:
+                doc['connected_members'].remove(member)
+        data_to_update['connected_members'] = doc['connected_members']
+    else:
+        data_to_update['connected_members'] = []
+    data_to_update['id'] = current_user.fleet_id
+    data_to_update['fc_sid'] = current_user.sid
+    data_to_update['members'] = new_members
+    update = {'$set': data_to_update, 
+              '$currentDate': {'updated_time': {'$type': 'timestamp'} }
+              }
+    mongo.db.fleets.update_one(_filter, update, upsert=True)
+    return fleet.data, data_to_update['connected_members']
 
 def get_fleet_wings(current_user):
     update_token(current_user)
@@ -315,18 +417,6 @@ def make_img_url(entry_type, entry_id):
         return 'https://image.eveonline.com/' + entry_type + '/' + str(entry_id) + '_32.png'
     else:
         return ''
-
-def redis_bytes_to_data(redis_object):
-    """ helper function to turn the raw bytes returned from redis into their proper values """
-    decoded_object = {}
-    for key, value in redis_object.items():
-        if key.decode('utf-8') == 'wallet' or key.decode('utf-8') == 'amount':
-            decoded_object[key.decode('utf-8')] = float(value.decode('utf-8'))
-        elif key.decode('utf-8').endswith('id'):
-            decoded_object[key.decode('utf-8')] = int(value.decode('utf-8'))
-        else:
-            decoded_object[key.decode('utf-8')] = value.decode('utf-8')
-    return decoded_object
 
 class EsiError(Exception):
     pass

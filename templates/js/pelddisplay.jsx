@@ -7,6 +7,7 @@ export default class PeldDisplay extends React.Component {
     this.state = { fleet: 'Getting fleet data...' };
     socket.on('peld_data', (data) => {
       this.setState({ fleet: JSON.parse(data) });
+      console.log(JSON.parse(data));
     });
   }
 

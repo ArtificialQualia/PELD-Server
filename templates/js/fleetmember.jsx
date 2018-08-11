@@ -92,7 +92,9 @@ export class FleetMember extends React.Component {
                 {chevron}{star}
                 <span className="selectable-text" onMouseEnter={this.unsetDraggable} onMouseLeave={this.setDraggable}>{this.props.member.character_name}</span>
                 </div>
-                <small className="text-nowrap align-top">PELD: <FontAwesomeIcon className="ml-1 red" icon="times" /></small>
+                <small className="text-nowrap align-top">
+                  PELD: { this.props.member.peld_connected ? <FontAwesomeIcon className="ml-1 green" icon="check" /> : <FontAwesomeIcon className="ml-1 red" icon="times" /> }
+                </small>
             </span>
             <span className="align-middle d-flex w-100 justify-content-between">
                 <div className="text-truncate">

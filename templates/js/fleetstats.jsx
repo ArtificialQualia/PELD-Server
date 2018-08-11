@@ -26,7 +26,7 @@ class StatBadge extends React.Component {
         else {
             return (
             <div className="my-auto align-center badge badge-secondary ml-1" style={{fontSize: "85%"}} 
-            ref={this.tooltip} data-toggle="tooltip" data-html="true" data-placement="bottom" title={this.props.details}>
+            ref={this.tooltip} data-toggle="tooltip" data-html="true" data-placement="bottom" data-original-title={this.props.details}>
                 {this.props.number}
             </div>
             );
@@ -42,7 +42,7 @@ class StatCard extends React.Component {
   render() {
     var title = ""
     if ( this.props.title ) {
-    title = <div className="card-header bg-light p-2"><span className="title-text">{this.props.title}{this.props.number && <StatBadge number={this.props.number} />}</span></div>
+    title = <div className="card-header bg-light p-2"><span className="title-text">{this.props.title}{this.props.number && <StatBadge number={this.props.number} details={this.props.details} />}</span></div>
     }
     var body = ""
     if ( this.props.body ) {
@@ -154,6 +154,7 @@ export default class FleetStats extends React.Component {
     super(props);
     this.state = { cards: [], 
         fleet_number: 0, pelds_number: 0, 
+        pelds_detail: "",
         locations: [], locations_detail: {},
         ships: [], ship_ids: [], ships_detail: {} 
     };
@@ -174,6 +175,12 @@ export default class FleetStats extends React.Component {
       this.addToDetail(this.fleet_ships_detail, member['ship_name'], member['character_name'])
       this.fleet_ship_ids[member['ship_name']] = member['ship_type_id']
       this.fleet_count += 1;
+      if (member['peld_connected']) {
+          this.pelds_count += 1;
+      }
+      else {
+          this.pelds_detail += "<br />"+member['character_name']
+      }
   }
 
   fleetUpdate(fleet) {
@@ -183,6 +190,8 @@ export default class FleetStats extends React.Component {
     this.fleet_ship_ids = {};
     this.fleet_ships_detail = {};
     this.fleet_count = 0;
+    this.pelds_count = 0;
+    this.pelds_detail = "Not Connected:";
     if ('fleet_commander' in fleet) {
       this.updateStats(fleet['fleet_commander']);
     }
@@ -209,14 +218,15 @@ export default class FleetStats extends React.Component {
     this.fleet_ships = sortDict(this.fleet_ships);
     if (this.state.cards.length == 0) {
       this.state.cards.push(<StatCard index={0} key="In fleet" title="In fleet: " number={this.state.fleet_number} />);
-      this.state.cards.push(<StatCard index={1} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} />);
+      this.state.cards.push(<StatCard index={1} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} details={this.state.pelds_detail} />);
       this.state.cards.push(<LocationsCard index={2} key="Locations" locations={this.state.locations} details={this.state.locations_detail} />);
       this.state.cards.push(<ShipsCard index={3} key="Ship Types" ships={this.state.ships} ship_ids={this.state.ship_ids} details={this.state.ships_detail} />);
     }
     if (this.update) {
         this.setState({
             fleet_number: this.fleet_count,
-            pelds_number: "0/"+this.fleet_count,
+            pelds_number: this.pelds_count+"/"+this.fleet_count,
+            pelds_detail: this.pelds_detail,
             locations: this.fleet_locations,
             locations_detail: this.fleet_locations_detail,
             ships: this.fleet_ships,
@@ -278,7 +288,7 @@ export default class FleetStats extends React.Component {
               new_cards.push(<StatCard index={i} key="In fleet" title="In fleet: " number={this.state.fleet_number} />);
               break;
             case "PELDs Connected":
-              new_cards.push(<StatCard index={i} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} />);
+              new_cards.push(<StatCard index={i} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} details={this.state.pelds_detail} />);
               break;
             case "Locations":
               new_cards.push(<LocationsCard index={i} key="Locations" locations={this.state.locations} details={this.state.locations_detail} />);

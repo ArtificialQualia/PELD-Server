@@ -7,6 +7,7 @@ from esipy.exceptions import APIException
 from flask import request
 from flask import session
 from flask import redirect
+from flask import render_template
 from flask import url_for
 from flask import Blueprint
 from flask import current_app
@@ -49,13 +50,15 @@ def login():
     token = generate_token()
     session['token'] = token
     scopes = []
-    for scope in request.args:
-        scopes.append(request.args.get(scope))
+    for key in request.args:
+        if key == 'login_type' or key == 'socket_guid' or key == 'character_name':
+            session[key] = request.args[key]
+        else:
+            scopes.append(request.args.get(key))
     return redirect(esisecurity.get_auth_uri(
         scopes=scopes,
         state=token,
     ))
-
 
 @sso_pages.route('/sso/logout')
 @login_required
@@ -89,6 +92,13 @@ def callback():
 
     # the character information is retrieved
     cdata = esisecurity.verify()
+    
+    if 'character_name' in session:
+        character_name = session.pop('character_name')
+        if cdata['CharacterName'] != character_name:
+            return render_template("error.html", error="ERROR: Your character name in PELD (" + character_name +
+                                   ") does not match the character you logged in via ESI (" + cdata['CharacterName'] + 
+                                   "). Please go back to PELD and try again.")
 
     # if the user is already authed, they are logged out
     if current_user.is_authenticated:
@@ -96,13 +106,24 @@ def callback():
     
     # create a user object from custom User class
     user = User(character_data=cdata, auth_response=auth_response, mongo=mongo)
+    if 'socket_guid' in session:
+        character_filter = {'id': cdata['CharacterID']}
+        socket_guid = session.pop('socket_guid')
+        data_to_update = {'socket_guid': socket_guid}
+        update = {"$set": data_to_update}
+        mongo.db.characters.update_one(character_filter, update)
 
     # register user with flask-login
     login_user(user)
     session.permanent = True
 
-    # send user to main index, maybe switch this to user page?
-    return redirect(url_for("main_pages.index"))
+    if 'login_type' in session:
+        login_type = session.pop('login_type')
+        if login_type == 'member':
+            return render_template("error.html", error="You have successfully logged in, you may close this window.")
+        else:
+            return redirect(url_for("main_pages.main_app"))
+    return redirect(url_for("main_pages.main_app"))
 
 @login_manager.user_loader
 def load_user(character_id):

@@ -40,6 +40,7 @@ class User(UserMixin):
         self.refresh_token = user_data['tokens']['refresh_token']
         self.access_token_expires = user_data['tokens']['access_token_expires']
         self.fleet_id = user_data.get('fleet_id', None)
+        self.sid = user_data.get('sid', None)
         
         
     def get_id(self):

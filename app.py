@@ -40,6 +40,11 @@ socketio.init_app(app)
 def ensure_db_indexes():
     with app.app_context():
         mongo.db.characters.create_index('id', unique=True)
+        mongo.db.characters.create_index('socket_guid')
+        mongo.db.entities.create_index('id', unique=True)
+        mongo.db.fleets.create_index('updated_time', expireAfterSeconds=86400)
+        mongo.db.fleets.create_index('members')
+        mongo.db.fleets.create_index('id')
 try:
     from uwsgidecorators import postfork
     @postfork
