@@ -77,13 +77,9 @@ export class FleetMember extends React.Component {
       star = <FontAwesomeIcon className="star mr-1" icon="star" />;
     }
     const {
-        accepts,
-        isOver,
-        canDrop,
-        connectDropTarget,
-        lastDroppedItem,
+      connectDragSource,
+      isOver,
     } = this.props
-    const { isDropped, isDragging, connectDragSource } = this.props
     var element = (
         <div className={"dropdown list-group-item list-group-item-action fleet-member " + this.props.indent} style={isOver ? Object.assign({}, this.props.style, {backgroundColor: '#666'}) : this.props.style}>
             <div data-toggle="dropdown">

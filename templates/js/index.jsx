@@ -41,7 +41,9 @@ if (window.location.pathname.split('/')[1] == 'app') {
         </Scrollbars>
       </Pane>
       <Pane>
-        <PeldDisplay />
+        <Scrollbars autoHide={true} autoHideDuration={500} renderThumbVertical={props => <div {...props} className="custom-scroll-vertical"/>} >
+          <PeldDisplay />
+        </Scrollbars>
       </Pane>
       <Pane initialSize="20%" maxSize="49%">
         <Scrollbars autoHide={true} autoHideDuration={500} renderThumbVertical={props => <div {...props} className="custom-scroll-vertical"/>} >

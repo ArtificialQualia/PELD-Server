@@ -157,7 +157,12 @@ def register_client():
     
 @socketio.on('peld_data', namespace='/client')
 def handle_peld_data(entry):
-    entry['name'] = request.cookies['name']
+    entry['entry']['owner'] = request.cookies['name']
+    if entry['entry']['shipType'] != entry['entry']['pilotName']:
+      entry['entry']['shipType'] = entry['entry']['shipType'].strip('*')
+      entry['entry']['shipTypeId'] = id_from_name(entry['entry']['shipType'])
+    else:
+      entry['entry'].pop('shipType')
     fleet_function = lambda x: socketio.emit('peld_data', json.dumps(entry), room=x, namespace=None)
     process_incoming_peld(fleet_function)
     
@@ -180,8 +185,9 @@ def process_incoming_peld(fleet_function=None):
     if docs is None:
         return
     for fleet in docs:
-        if _id not in fleet['connected_members']:
-            members = fleet['connected_members'] or [_id]
+        if fleet['connected_members'] is None or _id not in fleet['connected_members']:
+            members = fleet['connected_members'] or []
+            members.append(_id)
             update = {'$set': {'connected_members': members}}
             mongo.db.fleets.update_one({'id': fleet['id']}, update)
         if fleet_function is not None:
@@ -318,6 +324,26 @@ def decode_fleet_member(member):
     member.pop('takes_fleet_warp')
     member.pop('wing_id')
     return member
+
+def id_from_name(_name):
+    id_filter = {'name': _name}
+    result = mongo.db.entities.find_one(id_filter)
+    if result is not None:
+        return result['id']
+    op = esiapp.op['post_universe_ids'](
+        names=[_name]
+    )
+    request = esiclient.request(op)
+    if request.status != 200:
+        logging.error('error getting ship data for: ' + str(_name))
+        logging.error('error is: ' + request.data['error'])
+        return 0
+    if ('inventory_types' in request.data):
+      add_db_entity(request.data['inventory_types'][0]['id'], _name)
+      return request.data['inventory_types'][0]['id']
+    else:
+      add_db_entity(-1, _name)
+      return -1
 
 def decode_character_id(_id):
     id_filter = {'id': _id}

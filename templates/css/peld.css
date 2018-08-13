@@ -48,6 +48,38 @@ html, body {
     color: green;
 }
 
+.brown {
+    color: brown;
+}
+
+.lime {
+    color: lime;
+}
+
+.greenyellow {
+    color: greenyellow;
+}
+
+.cyan {
+    color: cyan;
+}
+
+.darkorange {
+    color: darkorange;
+}
+
+.coral {
+    color: coral;
+}
+
+.yellow {
+    color: yellow;
+}
+
+.aquamarine {
+  color: aquamarine;
+}
+
 .custom-scroll-vertical {
     background-color: #375a7f;
     opacity: 0.8;
@@ -63,12 +95,33 @@ html, body {
 }
 
 .fleet-placeholder {
-    cursor: default !important;
+  cursor: default !important;
+}
+
+.peld-right-full {
+  min-width: 0px;
+  height: 100%;
+  width: 100%;
+  -webkit-transition: width 0s;
+  transition: width 0s;
+}
+
+.peld-right-collapse {
+  min-width: 0px;
+  height: 100%;
+  width: 0%;
+  -webkit-transition: width 1s ease 0.5s;
+  transition: width 1s ease 0.5s;
 }
 
 #error {
-    z-index: 9999;
-    position: fixed;
-    top: 65px;
-    pointer-events: none;
+  z-index: 9999;
+  position: fixed;
+  top: 65px;
+  pointer-events: none;
+}
+
+.peld-button-wrapper {
+  white-space: nowrap;
+  overflow: hidden;
 }

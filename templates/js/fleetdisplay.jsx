@@ -5,6 +5,8 @@ import { FleetMember, FleetPlaceholder } from "./fleetmember";
 import { DragDropContext } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
 
+export var character_ship_data = {}
+
 @DragDropContext(HTML5Backend)
 export default class FleetDisplay extends React.Component {
   constructor(props) {
@@ -24,6 +26,10 @@ export default class FleetDisplay extends React.Component {
     var fleet_count = 0;
     if ('fleet_commander' in this.state.fleet) {
       fleet.push(<FleetMember key={this.state.fleet.fleet_commander.character_id} member={this.state.fleet.fleet_commander} style={{borderBottom:0, borderBottomRightRadius:0, borderBottomLeftRadius:0}} />);
+      character_ship_data[this.state.fleet.fleet_commander.character_name] = {
+        ship_name: this.state.fleet.fleet_commander.ship_name,
+        ship_id: this.state.fleet.fleet_commander.ship_type_id
+      }
       fleet_count += 1;
     }
     else {
@@ -35,6 +41,10 @@ export default class FleetDisplay extends React.Component {
       var wing_count = 0;
       if ('wing_commander' in wing) {
         squads.push(<FleetMember key={wing.wing_commander.character_id} member={wing.wing_commander} />);
+        character_ship_data[wing.wing_commander.character_name] = {
+          ship_name: wing.wing_commander.ship_name,
+          ship_id: wing.wing_commander.ship_type_id
+        }
         wing_count += 1;
       }
       else {
@@ -46,6 +56,10 @@ export default class FleetDisplay extends React.Component {
         var squad_count = 0;
         if ('squad_commander' in squad) {
           squad_members.push(<FleetMember key={squad.squad_commander.character_id} member={squad.squad_commander} />);
+          character_ship_data[squad.squad_commander.character_name] = {
+            ship_name: squad.squad_commander.ship_name,
+            ship_id: squad.squad_commander.ship_type_id
+          }
           squad_count += 1;
         }
         else {
@@ -54,6 +68,10 @@ export default class FleetDisplay extends React.Component {
         if ('members' in squad) {
           for (var k=0; k < squad.members.length; k++){
             squad_members.push(<FleetMember key={squad.members[k].character_id} member={squad.members[k]} />);
+            character_ship_data[squad.members[k].character_name] = {
+              ship_name: squad.members[k].ship_name,
+              ship_id: squad.members[k].ship_type_id
+            }
             squad_count += 1;
           }
         }
