@@ -11,8 +11,6 @@ from flask_pymongo import PyMongo
 from flask_login import LoginManager
 from flask_socketio import SocketIO
 
-import redis
-
 import config
 
 # define mongo global for other modules
@@ -41,8 +39,5 @@ esiclient = EsiClient(
     headers={'User-Agent': config.ESI_USER_AGENT}
 )
 
-# direct access to redis is needed for some components, like statistics caching
-r = redis.StrictRedis(host=config.REDIS_URL, port=config.REDIS_PORT, db=0)
-
-# init socket.io
+# init socket.io 
 socketio = SocketIO()

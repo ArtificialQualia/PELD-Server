@@ -22,7 +22,6 @@ from flask_socketio import disconnect
 import config
 from app.user import User
 from app.flask_shared_modules import mongo
-#from app.flask_shared_modules import r
 from app.flask_shared_modules import socketio
 from app.flask_shared_modules import esiapp
 from app.flask_shared_modules import esiclient
@@ -54,6 +53,8 @@ def background_fleet(user, sid):
         id_filter = {'id': user.character_id}
         result = mongo.db.characters.find_one(id_filter)
         if not result or result['sid'] != sid:
+            socketio.emit('exception', 'If you are seeing this, you probably opened PELD-Fleet in another tab. ' + \
+                          'Please close this tab and continue on your new tab.', room=sid)
             logging.error('sid changed, exiting background update for: ' + str(sid))
             return
         try:
@@ -85,7 +86,9 @@ def handle_client_connect():
     
 @socketio.on('disconnect')
 def handle_disconnect():
-    logging.debug('Client disconnected')
+    logging.debug('Client disconnected, removing sid from db')
+    if current_user.is_authenticated:
+        add_db_sid(current_user.character_id, "0")
     
 @socketio.on('disconnect', namespace='/client')
 def handle_client_disconnect():

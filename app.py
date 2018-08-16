@@ -3,6 +3,9 @@
  sets up Flask, initializes all the modules needed, and registers the routes
 """
 
+import eventlet
+eventlet.monkey_patch()
+
 import pymongo
 
 import config
@@ -32,27 +35,17 @@ mongo.init_app(app)
 login_manager.init_app(app)
 
 # Initialize socket.io for socket handling
-socketio.init_app(app)
+socketio.init_app(app, message_queue="redis://")
 
 # create indexes in database, runs on every startup to prevent manual db setup and ensure compliance
-# if this is a production server, then we must run this with @postfork so it runs after uwsgi forks
-# processes so that it has access to app_context(), in development servers it can be run directly
-def ensure_db_indexes():
-    with app.app_context():
-        mongo.db.characters.create_index('id', unique=True)
-        mongo.db.characters.create_index('socket_guid')
-        mongo.db.entities.create_index('id', unique=True)
-        mongo.db.entities.create_index('name')
-        mongo.db.fleets.create_index('updated_time', expireAfterSeconds=86400)
-        mongo.db.fleets.create_index('members')
-        mongo.db.fleets.create_index('id')
-try:
-    from uwsgidecorators import postfork
-    @postfork
-    def postfork_ensure_db_indexes():
-        ensure_db_indexes()
-except ImportError as e:
-    ensure_db_indexes()
+with app.app_context():
+    mongo.db.characters.create_index('id', unique=True)
+    mongo.db.characters.create_index('socket_guid')
+    mongo.db.entities.create_index('id', unique=True)
+    mongo.db.entities.create_index('name')
+    mongo.db.fleets.create_index('updated_time', expireAfterSeconds=86400)
+    mongo.db.fleets.create_index('members')
+    mongo.db.fleets.create_index('id')
 
 # Register all our blueprints (routes that come from other files)
 # this could theoretically be changed to mount the routes on other endpoints

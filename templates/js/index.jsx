@@ -25,10 +25,10 @@ library.add(faCheck)
 library.add(faCaretDown)
 library.add(faCaretRight)
 
-var socket = io();
-export { socket };
+export var socket = null;
 
 if (window.location.pathname.split('/')[1] == 'app') {
+  socket = io()
   socket.on('reconnect', (attemptNumber) => {
     socket.emit('register_fleet_handler');
   });
