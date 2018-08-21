@@ -267,7 +267,9 @@ def get_fleet_members(current_user):
         logging.error('error getting fleet members for: ' + str(current_user.get_id()))
         logging.error('error is: ' + fleet.data['error'])
         if fleet.status == 404:
-            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool, blame CCP)')
+            if fleet.data['error'] == "Not found":
+                raise EsiError(fleet.data['error'])
+            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool)')
         else:
             raise EsiException(fleet.data['error'])
     elif fleet.status >= 500:
@@ -304,7 +306,9 @@ def get_fleet_wings(current_user):
         logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
         logging.error('error is: ' + fleet.data['error'])
         if fleet.status == 404:
-            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool, blame CCP)')
+            if fleet.data['error'] == "Not found":
+                raise EsiError(fleet.data['error'])
+            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool)')
         else:
             raise EsiException(fleet.data['error'])
     elif fleet.status >= 500:

@@ -1,25 +1,7 @@
 import React from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Draggable } from 'react-beautiful-dnd';
-
-const colorClasses = {
-  'dpsIn': 'red',
-  'DPS In': 'red',
-  'capDamageIn': 'coral',
-  'Cap Damage In': 'coral',
-  'logiIn': 'lime',
-  'Logi In': 'lime',
-  'capRecieved': 'greenyellow',
-  'Cap Received': 'greenyellow',
-  'dpsOut': 'cyan',
-  'DPS Out': 'cyan',
-  'capDamageOut': 'darkorange',
-  'Cap Damage Out': 'darkorange',
-  'logiOut': 'aquamarine',
-  'Logi Out': 'aquamarine',
-  'capTransfered': 'yellow',
-  'Cap Transferred': 'yellow',
-}
+import { colors } from "./settings";
 
 class InvolvedEntry extends React.Component {
   constructor(props) {
@@ -54,6 +36,7 @@ class InvolvedEntry extends React.Component {
   }
 
   render () {
+    var color = {color: colors[this.props.niceType]}
     return (
       <div className="list-group-item list-group-item-container pb-0">
         <div className="d-flex w-100 h-100 justify-content-between align-items-center peld-button-wrapper">
@@ -74,7 +57,7 @@ class InvolvedEntry extends React.Component {
                 ): ""}
               </div>
             </button>
-            <div className={"m-1 "+colorClasses[this.props.type]}>{this.props.entry.total}</div>
+            <div className="m-1" style={color}>{this.props.entry.total}</div>
         </div>
 
         <div id={"collapse_" + this.props.type + this.decoded_name} className={"ml-3 pb-1 collapse " + this.show}>
@@ -82,7 +65,7 @@ class InvolvedEntry extends React.Component {
             <div key={item[0]} className="list-group-item px-2">
               <div className="d-flex w-100 h-100 justify-content-between align-items-center">
                 <div className="text-truncate">{item[0]}</div>
-                <div className={colorClasses[this.props.type]}>{item[1].total}</div>
+                <div style={color}>{item[1].total}</div>
               </div>
             </div>
           ))}
@@ -125,6 +108,7 @@ export class StatEntry extends React.Component {
   }
 
   render () {
+    var color = {color: colors[this.props.niceType]}
     return (
       <div className="list-group-item list-group-item-container pb-0">
         <div className="d-flex w-100 h-100 justify-content-between align-items-center peld-button-wrapper">
@@ -145,12 +129,12 @@ export class StatEntry extends React.Component {
                   ): ""}
                 </div>
             </button>
-            <div className={"m-1 "+colorClasses[this.props.type]}>{this.props.entry.total}</div>
+            <div className="m-1" style={color}>{this.props.entry.total}</div>
         </div>
 
         <div id={"collapse_" + this.props.type + this.decoded_name} className={"ml-3 pb-1 collapse " + this.show}>
           {this.props.entry.involved.map((item, index) => (
-            <InvolvedEntry key={item[0]} type={this.props.type} name={item[0]} entry={item[1]} />
+            <InvolvedEntry key={item[0]} type={this.props.type} niceType={this.props.niceType} name={item[0]} entry={item[1]} />
           ))}
         </div>
       </div>
@@ -164,6 +148,7 @@ export class PeldCard extends React.Component {
   }
 
   render () {
+    var color = {color: colors[this.props.type]}
     return (
       <Draggable draggableId={this.props.type} index={this.props.index}>
         {(provided, snapshot) => {
@@ -184,7 +169,7 @@ export class PeldCard extends React.Component {
           return (
             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} onMouseDown={onMouseDown} className="list-group-item-container py-1">
               <div className="text-center list-group-item card-title text-truncate" onMouseDown={this.props.onMouseDown}>
-                <strong className={colorClasses[this.props.type]}>{this.props.type}</strong>
+                <strong style={{color: colors[this.props.type]}}>{this.props.type}</strong>
               </div>
               <span style={{cursor: 'auto'}}>
                 {this.props.children}

@@ -42,7 +42,7 @@
                   <img class="portrait rounded mr-1" src="https://image.eveonline.com/Character/{{ current_user.character_id }}_32.jpg" />{{ current_user.character_name }}
                   <span class="caret"></span>
                 </a>
-	            <div class="dropdown-menu dropdown-menu-right" style="min-width: 0px;">
+	            <div class="dropdown-menu dropdown-menu-right" style="min-width: 0px;z-index: 1030;">
 	              <a href="{{ url_for('sso_pages.logout') }}" class="dropdown-item white-link"> Logout</a>
 	            </div>
 	          </div>
@@ -54,6 +54,8 @@
       <div id="error" class="w-100 justify-content-center">
       </div>
       <div id="content" class="h-100 d-flex">
+      </div>
+      <div id="settings">
       </div>
     </div>
     <script src="{{ url_for('static', filename='dist/bundle.js') }}" type="text/javascript"></script>

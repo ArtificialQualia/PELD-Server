@@ -84,9 +84,11 @@ class StatCard extends React.Component {
 
 function Location(props) {
     return (
+      <div>
         <span className="body-text">
           {props.location[0]}: <StatBadge number={props.location[1]} details={props.details} />
         </span>
+      </div>
     );
 }
 
@@ -122,7 +124,7 @@ class ShipsCard extends React.Component {
     render() {
         var elements = [];
         for (var i=0; i < this.props.ships.length; i++) {
-        var img = <img height="24px" width="24px" className="mr-1" src={"https://image.eveonline.com/Render/" + this.props.ship_ids[this.props.ships[i][0]] + "_32.png"} />;
+        var img = <img height="24px" width="24px" className="mr-1 mb-1" src={"https://image.eveonline.com/Render/" + this.props.ship_ids[this.props.ships[i][0]] + "_32.png"} />;
         elements.push(<Ship key={this.props.ships[i][0]} ship={this.props.ships[i]} img={img} details={this.props.details[this.props.ships[i][0]]} />);
         }
         return <StatCard index={this.props.index} title="Ship Types:" body={elements} />;
@@ -154,7 +156,7 @@ export default class FleetStats extends React.Component {
     super(props);
     this.state = { cards: [], 
         fleet_number: 0, pelds_number: 0, 
-        pelds_detail: "",
+        fleet_detail: "", pelds_detail: "",
         locations: [], locations_detail: {},
         ships: [], ship_ids: [], ships_detail: {} 
     };
@@ -175,6 +177,7 @@ export default class FleetStats extends React.Component {
       this.addToDetail(this.fleet_ships_detail, member['ship_name'], member['character_name'])
       this.fleet_ship_ids[member['ship_name']] = member['ship_type_id']
       this.fleet_count += 1;
+      this.fleet_detail += "<br />"+member['character_name']
       if (member['peld_connected']) {
           this.pelds_count += 1;
       }
@@ -190,6 +193,7 @@ export default class FleetStats extends React.Component {
     this.fleet_ship_ids = {};
     this.fleet_ships_detail = {};
     this.fleet_count = 0;
+    this.fleet_detail = ""
     this.pelds_count = 0;
     this.pelds_detail = "Not Connected:";
     if ('fleet_commander' in fleet) {
@@ -216,8 +220,9 @@ export default class FleetStats extends React.Component {
     }
     this.fleet_locations = sortDict(this.fleet_locations);
     this.fleet_ships = sortDict(this.fleet_ships);
+    this.fleet_detail = this.fleet_detail.replace("<br />", '')
     if (this.state.cards.length == 0) {
-      this.state.cards.push(<StatCard index={0} key="In fleet" title="In fleet: " number={this.state.fleet_number} />);
+      this.state.cards.push(<StatCard index={0} key="In fleet" title="In fleet: " number={this.state.fleet_number} details={this.state.fleet_detail} />);
       this.state.cards.push(<StatCard index={1} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} details={this.state.pelds_detail} />);
       this.state.cards.push(<LocationsCard index={2} key="Locations" locations={this.state.locations} details={this.state.locations_detail} />);
       this.state.cards.push(<ShipsCard index={3} key="Ship Types" ships={this.state.ships} ship_ids={this.state.ship_ids} details={this.state.ships_detail} />);
@@ -225,6 +230,7 @@ export default class FleetStats extends React.Component {
     if (this.update) {
         this.setState({
             fleet_number: this.fleet_count,
+            fleet_detail: this.fleet_detail,
             pelds_number: this.pelds_count+"/"+this.fleet_count,
             pelds_detail: this.pelds_detail,
             locations: this.fleet_locations,
@@ -285,7 +291,7 @@ export default class FleetStats extends React.Component {
     for (var i=0; i < this.state.cards.length; i++) {
         switch (this.state.cards[i].key) {
             case "In fleet":
-              new_cards.push(<StatCard index={i} key="In fleet" title="In fleet: " number={this.state.fleet_number} />);
+              new_cards.push(<StatCard index={i} key="In fleet" title="In fleet: " number={this.state.fleet_number} details={this.state.fleet_detail} />);
               break;
             case "PELDs Connected":
               new_cards.push(<StatCard index={i} key="PELDs Connected" title="PELDs Connected: " number={this.state.pelds_number} details={this.state.pelds_detail} />);

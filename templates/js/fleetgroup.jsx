@@ -2,6 +2,7 @@ import React from "react";
 import { DropTarget } from 'react-dnd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { socket } from "./index";
+import $ from 'jquery'; 
 
 const squadTarget = {
 	drop(props, monitor) {
@@ -39,6 +40,11 @@ export default class FleetGroup extends React.Component {
     }
     this.handleCollapse = this.handleCollapse.bind(this);
     this.onButtonDragOver = this.onButtonDragOver.bind(this);
+    this.tooltip = React.createRef();
+  }
+
+  componentDidMount() {
+    $(this.tooltip.current).tooltip();
   }
 
   onButtonDragOver(event) {
@@ -65,11 +71,8 @@ export default class FleetGroup extends React.Component {
 
   render() {
     const {
-        accepts,
         isOver,
-        canDrop,
         connectDropTarget,
-        lastDroppedItem,
     } = this.props
     if ((this.previousCount == 0 && this.props.count > 0)) {
       this.state.carret_direction = "down";
@@ -89,7 +92,11 @@ export default class FleetGroup extends React.Component {
                     <FontAwesomeIcon className="mr-1" icon={"caret-" + this.state.carret_direction} />
                     {this.props.name}
                 </button>
-                <div className="m-1 float-right badge badge-secondary">{this.props.count}</div>
+                
+                <div className="m-1 float-right badge badge-secondary" ref={this.tooltip} data-toggle="tooltip" 
+                      data-html="true" data-placement="bottom" data-original-title={this.props.details}>
+                    {this.props.count}
+                </div>
             </div>
 
             <div id={"collapse_" + this.props.id} className={"ml-3 pb-1 collapse " + this.show}>

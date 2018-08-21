@@ -3,6 +3,19 @@ import { socket } from "./index";
 import { PeldCard, StatEntry } from "./peldcard"
 import { character_ship_data } from "./fleetdisplay";
 import { DragDropContext, Droppable } from 'react-beautiful-dnd';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { secondsToAverage } from "./settings";
+
+export var cardReferences = {
+  'DPS In': React.createRef(),
+  'Cap Damage In': React.createRef(),
+  'Logi In': React.createRef(),
+  'Cap Received': React.createRef(),
+  'DPS Out': React.createRef(),
+  'Cap Damage Out': React.createRef(),
+  'Logi Out': React.createRef(),
+  'Cap Transferred': React.createRef(),
+};
 
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
@@ -41,12 +54,14 @@ export default class PeldDisplay extends React.Component {
     this.onDragStart = this.onDragStart.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
+    this.onMouseEnter = this.onMouseEnter.bind(this);
+    this.onMouseLeave = this.onMouseLeave.bind(this);
     this.cleanupStats = this.cleanupStats.bind(this);
     setInterval(this.cleanupStats, 100);
     socket.on('peld_data', (data) => {
       var json_data = JSON.parse(data);
       json_data.entry['time'] = new Date();
-      json_data.entry['amount'] = json_data.entry['amount']/10;
+      json_data.entry['amount'] = json_data.entry['amount']/secondsToAverage;
       this.peld_stats[json_data.category].push(json_data.entry);
       this.updateStats(json_data.category);
     });
@@ -54,34 +69,43 @@ export default class PeldDisplay extends React.Component {
   }
 
   updateStats(type) {
+    var niceType = '';
     if (type == 'dpsIn') {
-      this.peld_formatted['DPS In'] = this.updateInStat(type);
+      niceType = 'DPS In';
+      this.peld_formatted[niceType] = this.updateInStat(type, niceType);
     }
     else if (type == 'capDamageIn') {
-      this.peld_formatted['Cap Damage In'] = this.updateInStat(type);
+      niceType = 'Cap Damage In';
+      this.peld_formatted[niceType] = this.updateInStat(type, niceType);
     }
     else if (type == 'logiIn') {
-      this.peld_formatted['Logi In'] = this.updateInStat(type);
+      niceType = 'Logi In';
+      this.peld_formatted[niceType] = this.updateInStat(type, niceType);
     }
     else if (type == 'capRecieved') {
-      this.peld_formatted['Cap Received'] = this.updateInStat(type);
+      niceType = 'Cap Received';
+      this.peld_formatted[niceType] = this.updateInStat(type, niceType);
     }
     else if (type == 'dpsOut') {
-      this.peld_formatted['DPS Out'] = this.updateOutStat(type);
+      niceType = 'DPS Out';
+      this.peld_formatted[niceType] = this.updateOutStat(type, niceType);
     }
     else if (type == 'capDamageOut') {
-      this.peld_formatted['Cap Damage Out'] = this.updateOutStat(type);
+      niceType = 'Cap Damage Out';
+      this.peld_formatted[niceType] = this.updateOutStat(type, niceType);
     }
     else if (type == 'logiOut') {
-      this.peld_formatted['Logi Out'] = this.updateOutStat(type);
+      niceType = 'Logi Out';
+      this.peld_formatted[niceType] = this.updateOutStat(type, niceType);
     }
     else if (type == 'capTransfered') {
-      this.peld_formatted['Cap Transferred'] = this.updateOutStat(type);
+      niceType = 'Cap Transferred';
+      this.peld_formatted[niceType] = this.updateOutStat(type, niceType);
     }
     this.setState({peld_data: this.peld_formatted});
   }
 
-  updateInStat(type) {
+  updateInStat(type, niceType) {
     var values = this.peld_stats[type];
     var grouping = {};
     for (var i=0; i < values.length; i++) {
@@ -108,11 +132,11 @@ export default class PeldDisplay extends React.Component {
     }
     var groupedList = this.sortGroupedStats(grouping);
     return groupedList.map((item, index) => (
-      <StatEntry key={item[0]} type={type} name={item[0]} entry={item[1]} />
+      <StatEntry key={item[0]} type={type} niceType={niceType} name={item[0]} entry={item[1]} />
     ));
   }
 
-  updateOutStat(type) {
+  updateOutStat(type, niceType) {
     var values = this.peld_stats[type];
     var grouping = {};
     for (var i=0; i < values.length; i++) {
@@ -139,7 +163,7 @@ export default class PeldDisplay extends React.Component {
     }
     var groupedList = this.sortGroupedStats(grouping);
     return groupedList.map((item, index) => (
-      <StatEntry key={item[0]} type={type} name={item[0]} entry={item[1]} />
+      <StatEntry key={item[0]} type={type} niceType={niceType} name={item[0]} entry={item[1]} />
     ));
   }
 
@@ -171,7 +195,7 @@ export default class PeldDisplay extends React.Component {
     for (const key of Object.keys(this.peld_stats)) {
       var changed = false;
       var time = new Date();
-      while (this.peld_stats[key].length > 0 && time - this.peld_stats[key][0].time > 10000) {
+      while (this.peld_stats[key].length > 0 && time - this.peld_stats[key][0].time > secondsToAverage*1000) {
         changed = true;
         this.peld_stats[key].shift();
       }
@@ -236,56 +260,74 @@ export default class PeldDisplay extends React.Component {
     this.update = true;
   }
 
-    onDragStart() {
-      this.update = false;
-    }
+  onDragStart() {
+    this.update = false;
+  }
 
-    onMouseDown() {
-      this.setState({
-        is_dragging: true
-      });
-    }
+  onMouseDown() {
+    this.setState({
+      is_dragging: true
+    });
+  }
 
-    onMouseUp() {
-      this.setState({
-        is_dragging: false
-      });
-    }
+  onMouseUp() {
+    this.setState({
+      is_dragging: false
+    });
+  }
+
+  onMouseEnter(event) {
+    event.currentTarget.classList.add("fa-spin")
+  }
+
+  onMouseLeave(event) {
+    event.currentTarget.classList.remove("fa-spin")
+  }
 
   render () {
     this.lastRender = new Date();
     return (
-      <div className="d-flex w-100 h-100 justify-content-between p-1" onMouseUp={this.onMouseUp}>
-        <DragDropContext onDragStart={this.onDragStart} onDragEnd={this.onDragEnd} type="PELD_CARD">
-          <div className="w-100 h-100" style={{minWidth: '0px'}}>
-            <Droppable droppableId="peld_cards_left">
-                {(provided, snapshot) => (
-                <div ref={provided.innerRef} {...provided.droppableProps} className="h-100">
-                    {this.state.cards_left.map((item, index) => (
-                      <PeldCard index={index} key={item} type={item} onMouseDown={this.onMouseDown}>
-                        {this.state.peld_data[item]}
-                      </PeldCard>
-                    ))}
-                    {provided.placeholder}
-                </div>
-                )}
-            </Droppable>
-          </div>
-          <div className={this.state.cards_right.length > 0 || this.state.is_dragging ? "peld-right-full" : "peld-right-collapse" } >
-            <Droppable droppableId="peld_cards_right">
-                {(provided, snapshot) => (
-                <div ref={provided.innerRef} {...provided.droppableProps} className="h-100">
-                    {this.state.cards_right.map((item, index) => (
-                      <PeldCard index={index} key={item} type={item}>
-                        {this.state.peld_data[item]}
-                      </PeldCard>
-                    ))}
-                    {provided.placeholder}
-                </div>
-                )}
-            </Droppable>
-          </div>
-        </DragDropContext>
+      <div className="d-flex flex-column h-100">
+        <div className="w-100 p-1 text-center sticky-top border-bottom bg-light border-secondary text-truncate">
+            <h5 className="m-0">
+              PELD Data
+              <button className="btn btn-link p-0 border-0" style={{lineHeight: "1"}} data-toggle="modal" data-target="#settingsModal">
+                <FontAwesomeIcon className="star ml-1 fa-lg my-auto align-baseline" icon="cog" onMouseOver={this.onMouseEnter} onMouseLeave={this.onMouseLeave} />
+              </button>
+            </h5>
+        </div>
+        <div className="d-flex w-100 h-100 justify-content-between p-1 pb-2" onMouseUp={this.onMouseUp}>
+          <DragDropContext onDragStart={this.onDragStart} onDragEnd={this.onDragEnd} type="PELD_CARD">
+            <div className="w-100 h-100" style={{minWidth: '0px'}}>
+              <Droppable droppableId="peld_cards_left">
+                  {(provided, snapshot) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="h-100">
+                      {this.state.cards_left.map((item, index) => (
+                        <PeldCard index={index} key={item} ref={cardReferences[item]} type={item} onMouseDown={this.onMouseDown}>
+                          {this.state.peld_data[item]}
+                        </PeldCard>
+                      ))}
+                      {provided.placeholder}
+                  </div>
+                  )}
+              </Droppable>
+            </div>
+            <div className={this.state.cards_right.length > 0 || this.state.is_dragging ? "peld-right-full" : "peld-right-collapse" } >
+              <Droppable droppableId="peld_cards_right">
+                  {(provided, snapshot) => (
+                  <div ref={provided.innerRef} {...provided.droppableProps} className="h-100">
+                      {this.state.cards_right.map((item, index) => (
+                        <PeldCard index={index} key={item} ref={cardReferences[item]} type={item}>
+                          {this.state.peld_data[item]}
+                        </PeldCard>
+                      ))}
+                      {provided.placeholder}
+                  </div>
+                  )}
+              </Droppable>
+            </div>
+          </DragDropContext>
+        </div>
       </div>
     );
   }
