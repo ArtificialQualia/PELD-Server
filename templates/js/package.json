@@ -6,7 +6,8 @@
   "scripts": {
     "build": "webpack -p --progress --config webpack.config.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "webpack --progress -d --config webpack.config.js --watch"
+    "watch": "webpack --progress -d --config webpack.config.js --watch",
+    "profile": "webpack --profile --json"
   },
   "repository": {
     "type": "git",
@@ -48,12 +49,11 @@
     "react-dnd": "^5.0.0",
     "react-dnd-html5-backend": "^5.0.1",
     "react-dom": "^16.4.1",
-    "react-redux": "^5.0.7",
     "react-split-pane": "^2.0.2",
-    "redux": "^4.0.0",
     "socket.io": "^2.1.1",
     "style-loader": "^0.21.0",
     "webpack": "^4.16.1",
+    "webpack-bundle-analyzer": "^2.13.1",
     "webpack-cli": "^3.1.0"
   }
 }

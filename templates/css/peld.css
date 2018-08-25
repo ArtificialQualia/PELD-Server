@@ -125,3 +125,11 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
 }
+
+.modal-open[style] {
+  padding-right: 0px !important;
+}
+
+.modal-open .modal {
+  overflow-x: scroll !important;
+}

@@ -1,0 +1,165 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="px-1 m-2">
+  <h3 class="border-bottom border-secondary text-center my-3">Help</h3>
+
+  <div class="accordion mb-3" id="faqAccordion_disabled">
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#help1">
+          <h5 class="mb-0">
+            Connecting PyEveLiveDPS to PELD-Fleet
+          </h5>
+        </button>
+      </div>
+      <div id="help1" class="collapse">
+        <div class="card-body pt-2">
+          <div class="d-inline-flex align-items-center">
+            <img class="portrait rounded mr-1" src="{{ url_for('static', filename='img/peld-login.gif') }}">
+            <div class="w-100 d-flex flex-column justify-content-center">
+              <ol>
+                <li>Start your EVE client</li>
+                <li>Start PELD</li>
+                <li>Choose the correct character in the 'Character...' menu in PELD</li>
+                <li>From the main 'File...' menu, choose 'Fleet Mode'</li>
+                <li>Verify the character at the top of the 'Fleet Mode' menu is the one you want to use</li>
+                <li>In 'Server to use', either leave the default 'peld-fleet.com' or enter in your alliance's PELD-Server URL (ask your FC)</li>
+                <li>If you are not the FC, leave the 'Fleet Member' radio button checked</li>
+                <li>If you are participating in a large fleet fight, consider checking the 'low CPU mode' option
+                  <br />
+                  This will drastically reduce the CPU useage of PELD, but will prevent you from seeing your own combat statistics locally
+                </li>
+                <li>Hit 'Login', a webpage will open for you to login via ESI, and a notification will pop up letting you know PELD is awaiting your login</li>
+                <li>A few seconds after you login, PELD will close the 'awaiting login' notification, and then you can play EVE normally!</li>
+              </ol>
+              PELD will automatically detect your fleet and send your combat statistics to the FC, you don't need to restart 'Fleet Mode' if you leave/join a new fleet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#help2">
+          <h5 class="mb-0">
+            Fleet member management
+          </h5>
+        </button>
+      </div>
+      <div id="help2" class="collapse">
+        <div class="card-body pt-2">
+          <div class="d-inline-flex align-items-center">
+            <img class="portrait rounded mr-1" src="{{ url_for('static', filename='img/help-fleet-members.gif') }}">
+            <div class="w-100 d-flex flex-column justify-content-center">
+              <h5>Moving members</h5>
+              <ol>
+                <li>Drag and drop any fleet member to move them</li>
+                <li>Move your fleet member over a wing/squad to expand the wing/squad</li>
+                <li>The fleet panel will take a few seconds to update</li>
+              </ol>
+              <h5>Kicking members</h5>
+              <ol>
+                <li>Click on any fleet member</li>
+                <li>Choose 'Kick Member' from the dropdown</li>
+                <li>The fleet panel will take a few seconds to update</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#help3">
+          <h5 class="mb-0">
+            Fleet statistics
+          </h5>
+        </button>
+      </div>
+      <div id="help3" class="collapse">
+        <div class="card-body pt-2">
+          <div class="d-inline-flex align-items-center">
+            <img class="portrait rounded mr-1" src="{{ url_for('static', filename='img/help-fleet-stats.gif') }}">
+            <div class="w-100 d-flex flex-column justify-content-center">
+              <h5>Statistics Details</h5>
+              <div class="mb-3">Hover over any number in the Fleet Statistics panel to get a list of members the stat applies to</div>
+              <h5>Move Statistics</h5>
+              <div>Drag and drop any Fleet Statistic card to re-order them</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#help4">
+          <h5 class="mb-0">
+            PELD Data
+          </h5>
+        </button>
+      </div>
+      <div id="help4" class="collapse">
+        <div class="card-body pt-2">
+          <div class="d-inline-flex align-items-center">
+            <img class="portrait rounded mr-1" src="{{ url_for('static', filename='img/help-peld-data.gif') }}">
+            <div class="w-100 d-flex flex-column justify-content-center">
+              <h5>Reorder Data</h5>
+              <div class="mb-3">
+                Drag and drop the title of any PELD Data card to reorder them, or change the column they are in
+                <br />
+                If all the PELD Data cards are in one column, the column will expand to take up the whole panel
+                <br />
+                NOTE: Within a data card, entries are ordered from highest value to lowest value
+              </div>
+              <h5>Change Settings</h5>
+              <div>
+                It is highly recommended to verify your PELD settings before you start combat
+                <br />
+                Click the gear next to 'PELD Data' to view/change your settings
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#help5">
+          <h5 class="mb-0">
+            PELD Settings
+          </h5>
+        </button>
+      </div>
+      <div id="help5" class="collapse">
+        <div class="card-body pt-2">
+          <div class="d-inline-flex align-items-center">
+            <img class="portrait rounded mr-1" src="{{ url_for('static', filename='img/help-peld-settings.gif') }}">
+            <div class="w-100 d-flex flex-column justify-content-center">
+              <div class="mb-3">PELD Settings are saved to your webbrowser and persist across PELD-Fleet sessions</div>
+              <h5>Average Values over (x) Seconds</h5>
+              <div class="mb-3">
+                This is a critical setting.  This is how long 'hits' will stay on your screen, and affects how DPS is calculated.
+                <br />
+                For instance, if you choose a value of 30 seconds, and a Hurricane hits for 3000 damage, you will see '100' DPS and the hit will remain on your screen for 30 seconds.
+              </div>
+              <h5>Expand PELD Data Entries</h5>
+              <div class="mb-3">
+                If checked, each new combat entry will be automatically expanded so you can see a breakdown of who was involved and the weapons they used.
+              </div>
+              <h5>Colors</h5>
+              <div>
+                This changes the color that appears for each entry and card header.  Click on a color to change it.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</div>
+{% endblock %}

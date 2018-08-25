@@ -74,7 +74,15 @@ def main_app():
 
 @main_pages.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=config.VERSION)
+    
+@main_pages.route('/faq')
+def faq():
+    return render_template('faq.html')
+    
+@main_pages.route('/help')
+def help():
+    return render_template('help.html')
 
 @socketio.on('connect')
 def handle_connect():
@@ -430,11 +438,6 @@ def update_token(current_user):
             raise EsiException(e)
         current_user.update_token(tokens)
     return True
-    
-
-@main_pages.route('/faq')
-def faq():
-    return render_template('faq.html')
             
 def make_img_url(entry_type, entry_id):
     """ helper to create image urls that come from the EVE images server """

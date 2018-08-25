@@ -1,6 +1,10 @@
 const webpack = require('webpack');
 const path = require('path');
+//const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const config = {
+//    plugins: [
+//      new BundleAnalyzerPlugin()
+//    ],
     entry:  path.resolve(__dirname, 'index.jsx'),
     output: {
         path: path.resolve(__dirname, '../../static/dist'),

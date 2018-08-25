@@ -1,13 +1,13 @@
 import React from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Draggable } from 'react-beautiful-dnd';
-import { colors } from "./settings";
+import { colors, expandEntries } from "./settings";
 
 class InvolvedEntry extends React.Component {
   constructor(props) {
     super(props);
     this.state = { carret_direction: null }
-    if (props.count > 0) {
+    if (expandEntries) {
       this.state.carret_direction = "down";
       this.show = "show";
       this.show_state = "show";
@@ -79,7 +79,7 @@ export class StatEntry extends React.Component {
   constructor(props) {
     super(props);
     this.state = { carret_direction: null }
-    if (props.count > 0) {
+    if (expandEntries) {
       this.state.carret_direction = "down";
       this.show = "show";
       this.show_state = "show";

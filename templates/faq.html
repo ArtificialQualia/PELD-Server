@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="px-1 m-2">
+  <h3 class="border-bottom border-secondary text-center my-3">FAQ</h3>
+
+  <div class="accordion mb-3" id="faqAccordion_disabled">
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq1">
+          <h5 class="mb-0">
+            How do I use this site?
+          </h5>
+        </button>
+      </div>
+      <div id="faq1" class="collapse show">
+        <div class="card-body pt-2">
+          See the <a href="/help">help page</a>.
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq2">
+          <h5 class="mb-0">
+              I'm having a problem or want a new feature, what do I do?
+          </h5>
+        </button>
+      </div>
+      <div id="faq2" class="collapse show">
+        <div class="card-body pt-2">
+          Look at the open issues <a href="https://github.com/ArtificialQualia/PELD-Server/issues">here</a>.<br />
+          If you think this is an unknown bug or new feature, open a <a href="https://github.com/ArtificialQualia/PELD-Server/issues/new">New Issue</a>.
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq3">
+          <h5 class="mb-0">
+            Why does it take so long for fleet updates to show up?
+          </h5>
+        </button>
+      </div>
+      <div id="faq3" class="collapse show">
+        <div class="card-body pt-2">
+          <p class="mb-1">Updates come as fast as CCP will allow.<br />
+            This is supposed to be every 5 seconds, but for some fleet statistics it takes longer because CCP gives old obsolete data.<br />
+            In general, it takes about:</p>
+          <ul class="mb-1">
+            <li>{{'<'}}5 seconds for fleet member changes (join/leave/move)</li>
+            <li>~30 seconds for fleet ship changes</li>
+            <li>~30 seconds for fleet location updates</li>
+          </ul>
+          NOTE: PELD combat data updates are sent immediately and are in real time.
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq4">
+          <h5 class="mb-0">
+            Can I see your source code?
+          </h5>
+        </button>
+      </div>
+      <div id="faq4" class="collapse show">
+        <div class="card-body pt-2">
+          Yes, this project is open source, just like PELD.  View it <a href="https://github.com/ArtificialQualia/PyEveLiveDPS">here</a>.
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq5">
+          <h5 class="mb-0">
+            Opsec is important to me, what data do you store on the server?
+          </h5>
+        </button>
+      </div>
+      <div id="faq5" class="collapse show">
+        <div class="card-body pt-2">
+          <p class="mb-1">Only the bare minimum.  Almost all data simply passes through the server from either a PELD client, or from ESI, to the FC.  It is not stored.<br />
+            To reiterate, the highly opsec things like PELD combat data, fleet location, fleet ship types, are NOT stored on the server.<br />
+            What is stored:</p>
+          <ul class="mb-1">
+            <li>Public information like names, item IDs, etc.</li>
+            <li>ESI Tokens (these are revoked when you log off)</li>
+            <li>A list of fleet members (only character IDs) for an FC's fleet.  This is required to verify that someone connecting through PELD does indeed belong to your fleet.  Fleet data is automatically deleted after 24 hours.</li>
+          </ul>
+          If you don't trust any server that you don't control, you can spin up your own PELD-Fleet instance.  Read more about that here.
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq6">
+          <h5 class="mb-0">
+            What is your tech stack?
+          </h5>
+        </button>
+      </div>
+      <div id="faq6" class="collapse show">
+        <div class="card-body pt-2">
+          <ul class="mb-0">
+            <li>Flask (python webserver)</li>
+            <li>React (javascript framework)</li>
+            <li>MongoDB (nosql database)</li>
+            <li>Nginx (load balancer, reverse proxy)</li>
+            <li>Eventlet (websocket/concurrent network server)</li>
+            <li>Redis (session caching)</li>
+            <li>Docker (deployments/containerization)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#faq7">
+          <h5 class="mb-0">
+            Who made this?
+          </h5>
+        </button>
+      </div>
+      <div id="faq7" class="collapse show">
+        <div class="card-body pt-2">
+          <a href="https://evewho.com/pilot/Demogorgon+Asmodeous">Demogorgon Asmodeous</a>.  View my github <a href="https://github.com/ArtificialQualia">here</a>.  ISK donations welcome.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

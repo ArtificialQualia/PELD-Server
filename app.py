@@ -54,10 +54,6 @@ app.register_blueprint(main_pages)
 
 # End Globals
 
-#profiler code for testing, disabled unless we need to performance test
-#from werkzeug.contrib.profiler import ProfilerMiddleware
-#app.config['PROFILE'] = True
-#app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[20])
-
 if __name__ == '__main__':
-    socketio.run(app, port=config.PORT, host=config.HOST)
+    # Running host on 0.0.0.0 is ok, since it is run behind nginx and docker
+    socketio.run(app, port=config.PORT, host="0.0.0.0")

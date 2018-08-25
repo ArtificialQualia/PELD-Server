@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="m-2 d-flex flex-column align-items-center">
+  <div class="d-flex flex-column w-75 mb-2">
+    <h2 class="align-self-center">PELD-Fleet</h2>
+    <h5 class="text-muted align-self-center">{{ version }}</h5>
+    <div class="jumbotron p-3">
+      <img class="figure-img img-fluid rounded border border-secondary" src="{{ url_for('static', filename='img/peld-temp.png') }}" />
+    </div>
+    <h3 class="border-bottom border-secondary">What is this?</h3>
+    <p class="w-100">
+        PELD-Fleet is the web component for the fleet networking feature of <a href="https://github.com/ArtificialQualia/PyEveLiveDPS">PyEveLiveDPS (PELD)</a>.
+        <br />
+        It provides a webpage for FCs to do fleet management and read output of combat stats from all of their fleet members running PELD.
+        <br />
+        This allows FCs to see stats like fleet location, and whom/what their fleet are attacking in realtime.
+        This helps FCs decide on who to primary, to ensure line members are engaging the correct targets, make sure logi chains are correct, etc.
+    </p>
+    <br />
+    <h3 class="border-bottom border-secondary">How do I use it?</h3>
+    <p class="w-100">
+      See the <a href="/help">help</a> page for some tutorials.
+      <br />
+      An FC can use PELD-Fleet without any fleet members running PELD itself, but you will only get combat data from fleet members running PELD.
+      <br />
+      The FC will need the Fleet Boss role to use this site. This is due to limitations set by CCP.
+      <br />
+      <br />
+      If you want to get started immediately, login now:
+      <br />
+      <a href="/app">
+        <img class="mt-1" src="{{ url_for('static', filename='img/eve-login.png') }}" />
+      </a>
+    </p>
+    <br />
+    <h3 class="border-bottom border-secondary">Who made this?</h3>
+    <div class="d-inline-flex">
+      <img class="portrait rounded mr-1" src="https://image.eveonline.com/Character/1858883174_128.jpg">
+      <div class="w-100 d-flex flex-column justify-content-center">
+        <div>
+          <a href="https://evewho.com/pilot/Demogorgon+Asmodeous">Demogorgon Asmodeous</a>
+          <br />
+          <a href="https://github.com/ArtificialQualia">View my github</a> (contains all the source code from both PELD and PELD-Fleet)
+          <br />
+          ISK donations welcomed.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
