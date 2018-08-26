@@ -65,6 +65,20 @@ export default class Alert extends React.Component {
                 return {errors: prevState.errors};
             });
         });
+        socket.on('reconnect_error', (error) => {
+          this.setState(function(prevState, props) {
+              prevState.errors.push(<ErrorBox key={this.count} message="Error re-establishing socket connection, trying again..." />)
+              this.count += 1;
+              return {errors: prevState.errors};
+          });
+        });
+        socket.on('reconnect', (attemptNumber) => {
+          this.setState(function(prevState, props) {
+              prevState.errors.push(<ErrorBox key={this.count} info message="Connection re-established." />)
+              this.count += 1;
+              return {errors: prevState.errors};
+          });
+        });
     }
 
     render() {

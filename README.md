@@ -8,7 +8,7 @@ This allows FCs to see what is happening to their fleet, and whom/what their fle
 
 ## Deployment
 
-If you wish to deploy your own version of this site, it is highly recommended to use Docker to deploy it rather than trying to do it yourself.  To read about how to do that, go [here](LINK).  If you don't want to use Docker... good luck.
+If you wish to deploy your own version of this site, it is highly recommended to use Docker to deploy it rather than trying to do it yourself.  To read about how to do that, go [here](https://github.com/ArtificialQualia/PELD-Server/wiki/Deployment).  If you don't want to use Docker, glhf.
 
 ## Problems?  Feedback?
 

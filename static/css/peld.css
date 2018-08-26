@@ -104,7 +104,7 @@ html, body {
 
 [data-type="Resizer"] {
   background-color: rgba(128, 128, 128) !important;
-  background-image: url(static/img/vertical.png) !important;
+  background-image: url(../img/vertical.png) !important;
   background-position: 50% !important;
   background-repeat: no-repeat !important;
   opacity: .5 !important;

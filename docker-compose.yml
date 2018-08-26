@@ -74,10 +74,6 @@ services:
       - /etc/letsencrypt/live/${SERVER_NAME}/privkey.pem:/etc/nginx/certs/key.pem
     depends_on:
       - web-worker1
-      - web-worker2
-      - web-worker3
-      - web-worker4
-      # add extra workers here
     environment:
       - SERVER_NAME=${SERVER_NAME}
     command: |
