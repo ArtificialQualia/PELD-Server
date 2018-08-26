@@ -3,6 +3,7 @@ version: '3'
 services:
   web-primary:
     build: .
+    image: peld:latest
     restart: always
     command: python3 app.py
     expose:
@@ -12,7 +13,7 @@ services:
       - redis
 
   web-worker1:
-    build: .
+    image: peld:latest
     restart: always
     command: python3 app.py
     expose:
@@ -21,7 +22,7 @@ services:
       - web-primary
 
   web-worker2:
-    build: .
+    image: peld:latest
     restart: always
     command: python3 app.py
     expose:
@@ -30,7 +31,7 @@ services:
       - web-primary
 
   web-worker3:
-    build: .
+    image: peld:latest
     restart: always
     command: python3 app.py
     expose:
@@ -39,7 +40,7 @@ services:
       - web-primary
 
   web-worker4:
-    build: .
+    image: peld:latest
     restart: always
     command: python3 app.py
     expose:
@@ -52,10 +53,14 @@ services:
   db:
     image: mongo:latest
     restart: always
+    volumes:
+      - ./db:/data/db
 
   redis:
     image: redis:latest
     restart: always
+    expose:
+      - "6379"
 
   nginx:
     image: nginx:latest
@@ -108,10 +113,9 @@ services:
 
             location /static/ {
                 gzip on;
-                gzip_comp_level 6;
-                gzip_types application/javascript application/x-javascript text/javascript;
+                gzip_types application/javascript application/x-javascript text/javascript text/css;
+                expires 1d;
                 tcp_nodelay  on;
-                sendfile_max_chunk 512k;
                 alias /usr/share/nginx/html/static/;
             }
 

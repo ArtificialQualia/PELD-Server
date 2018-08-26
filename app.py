@@ -35,7 +35,7 @@ mongo.init_app(app)
 login_manager.init_app(app)
 
 # Initialize socket.io for socket handling
-socketio.init_app(app, message_queue="redis://")
+socketio.init_app(app, message_queue="redis://"+config.REDIS_URL)
 
 # create indexes in database, runs on every startup to prevent manual db setup and ensure compliance
 with app.app_context():

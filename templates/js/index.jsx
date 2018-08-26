@@ -1,7 +1,4 @@
 import 'bootstrap';
-import 'bootswatch/dist/darkly/bootstrap.min.css';
-import '../css/peld.css';
-import '../css/resizer.css';
 import React from "react";
 import ReactDOM from "react-dom";
 import FleetDisplay from "./fleetdisplay";
@@ -61,5 +58,3 @@ if (window.location.pathname.split('/')[1] == 'app') {
   ReactDOM.render(content, document.getElementById("content"));
   ReactDOM.render(<Alert />, document.getElementById("error"));
 }
-
-import '../css/unhide.css';

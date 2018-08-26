@@ -11,21 +11,10 @@ const config = {
         filename: 'bundle.js',
     },
     resolve: {
-        extensions: ['.js', '.jsx', '.css']
+        extensions: ['.js', '.jsx']
     },
     module: {
       rules: [
-        {
-          test: /\.css$/,
-          use: ['style-loader', 
-            {
-              loader: 'css-loader',
-              options: {
-                url: false
-              }
-            }
-          ]
-        },
         {
           test: /\.jsx?/,
           exclude: /node_modules/,

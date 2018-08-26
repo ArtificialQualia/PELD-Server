@@ -83,15 +83,15 @@ def callback():
     if sess_token is None or token is None or token != sess_token:
         logging.debug('Expected session token: ' + sess_token)
         logging.debug('Received session token: ' + token)
-        return 'Login EVE Online SSO failed: Session Token Mismatch', 403
+        return render_template("error.html", error='Login EVE Online SSO failed: Session Token Mismatch')
 
     # now we try to get tokens
     try:
         auth_response = esisecurity.auth(code)
     except APIException as e:
-        return 'Login EVE Online SSO failed: %s' % e, 403
+        return render_template("error.html", error='Login EVE Online SSO failed: %s' % e)
     except ConnectionError as e:
-        return 'Login EVE Online SSO failed: %s' % e, 403
+        return render_template("error.html", error='Login EVE Online SSO failed: %s' % e)
 
     # the character information is retrieved
     cdata = esisecurity.verify()
