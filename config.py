@@ -6,21 +6,21 @@ import datetime
 # ------------------------------------------------------
 SECRET_KEY = 'REPLACE_ME'
 PORT = 5000
-HOST = 'localhost'
+HOST = 'REPLACE_ME'
+VERSION = 'v1.0'
 
 # -----------------------------------------------------
 # MongoDB Configs
 # -----------------------------------------------------
-MONGO_URI = 'mongodb://localhost:27017/peld'
+MONGO_URI = 'mongodb://db:27017/peld'
 
 # -----------------------------------------------------
 # ESI Configs
 # -----------------------------------------------------
-ESI_DATASOURCE = 'tranquility'  # Change it to 'singularity' to use the test server
-ESI_SWAGGER_JSON = 'https://esi.tech.ccp.is/latest/swagger.json?datasource=%s' % ESI_DATASOURCE
+ESI_SWAGGER_JSON = './app/swagger.json'
 ESI_SECRET_KEY = 'REPLACE_ME'  # your secret key
 ESI_CLIENT_ID = 'REPLACE_ME'  # your client ID
-ESI_CALLBACK = 'http://%s:%d/sso/callback' % (HOST, PORT)  # the callback URI you gave CCP
+ESI_CALLBACK = 'https://%s/sso/callback' % HOST
 ESI_USER_AGENT = 'peld-server by Demogorgon Asmodeous'
 
 # ------------------------------------------------------
@@ -32,5 +32,4 @@ REMEMBER_COOKIE_REFRESH_EACH_REQUEST = True
 # -----------------------------------------------------
 # Redis Configs
 # -----------------------------------------------------
-REDIS_URL = 'localhost'
-REDIS_PORT = 6379
+REDIS_URL = 'redis'
