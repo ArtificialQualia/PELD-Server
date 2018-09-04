@@ -1,7 +1,7 @@
 import React from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Draggable } from 'react-beautiful-dnd';
-import { colors, expandEntries } from "./settings";
+import { colors, expandEntries, expandInvolved } from "./settings";
 
 class InvolvedEntry extends React.Component {
   constructor(props) {
@@ -17,9 +17,9 @@ class InvolvedEntry extends React.Component {
       this.show = "";
       this.show_state = "";
     }
-    this.decoded_name = "";
+    this.encoded_name = "";
     for (var i=0; i < this.props.name.length; i++) {
-      this.decoded_name += "_" + this.props.name.charCodeAt(i);
+      this.encoded_name += "_" + this.props.name.charCodeAt(i);
     }
     this.handleCollapse = this.handleCollapse.bind(this);
   }
@@ -41,7 +41,7 @@ class InvolvedEntry extends React.Component {
       <div className="list-group-item list-group-item-container pb-0">
         <div className="d-flex w-100 h-100 justify-content-between align-items-center peld-button-wrapper">
             <button className="btn btn-link pl-0 text-truncate d-flex align-items-center" data-toggle="collapse" 
-              data-target={"#collapse_" + this.props.type + this.decoded_name} onClick={this.handleCollapse}>
+              data-target={"#collapse_" + this.props.type + this.props.encodedParentName + this.encoded_name} onClick={this.handleCollapse}>
               <FontAwesomeIcon className="mr-1" icon={"caret-" + this.state.carret_direction} />
               <div>
                 <div className="text-left">
@@ -60,7 +60,7 @@ class InvolvedEntry extends React.Component {
             <div className="m-1" style={color}>{this.props.entry.total}</div>
         </div>
 
-        <div id={"collapse_" + this.props.type + this.decoded_name} className={"ml-3 pb-1 collapse " + this.show}>
+        <div id={"collapse_" + this.props.type + this.props.encodedParentName + this.encoded_name} className={"ml-3 pb-1 collapse " + this.show}>
           {this.props.entry.weapons.map((item, index) => (
             <div key={item[0]} className="list-group-item px-2">
               <div className="d-flex w-100 h-100 justify-content-between align-items-center">
@@ -79,7 +79,7 @@ export class StatEntry extends React.Component {
   constructor(props) {
     super(props);
     this.state = { carret_direction: null }
-    if (expandEntries) {
+    if (expandInvolved) {
       this.state.carret_direction = "down";
       this.show = "show";
       this.show_state = "show";
@@ -89,9 +89,9 @@ export class StatEntry extends React.Component {
       this.show = "";
       this.show_state = "";
     }
-    this.decoded_name = "";
+    this.encoded_name = "";
     for (var i=0; i < this.props.name.length; i++) {
-      this.decoded_name += "_" + this.props.name.charCodeAt(i);
+      this.encoded_name += "_" + this.props.name.charCodeAt(i);
     }
     this.handleCollapse = this.handleCollapse.bind(this);
   }
@@ -113,7 +113,7 @@ export class StatEntry extends React.Component {
       <div className="list-group-item list-group-item-container pb-0">
         <div className="d-flex w-100 h-100 justify-content-between align-items-center peld-button-wrapper">
             <button className="btn btn-link pl-0 text-truncate d-flex align-items-center" data-toggle="collapse" 
-              data-target={"#collapse_" + this.props.type + this.decoded_name} onClick={this.handleCollapse}>
+              data-target={"#collapse_" + this.props.type + this.encoded_name} onClick={this.handleCollapse}>
                 <FontAwesomeIcon className="mr-1" icon={"caret-" + this.state.carret_direction} />
                 <div>
                   <div className="text-left">
@@ -132,9 +132,9 @@ export class StatEntry extends React.Component {
             <div className="m-1" style={color}>{this.props.entry.total}</div>
         </div>
 
-        <div id={"collapse_" + this.props.type + this.decoded_name} className={"ml-3 pb-1 collapse " + this.show}>
+        <div id={"collapse_" + this.props.type + this.encoded_name} className={"ml-3 pb-1 collapse " + this.show}>
           {this.props.entry.involved.map((item, index) => (
-            <InvolvedEntry key={item[0]} type={this.props.type} niceType={this.props.niceType} name={item[0]} entry={item[1]} />
+            <InvolvedEntry key={item[0]} type={this.props.type} encodedParentName={this.encoded_name} niceType={this.props.niceType} name={item[0]} entry={item[1]} />
           ))}
         </div>
       </div>

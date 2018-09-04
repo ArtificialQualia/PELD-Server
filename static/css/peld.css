@@ -2,6 +2,10 @@ html, body {
     height: 100%;
 }
 
+.navbar {
+    flex: 0 0 3rem;
+}
+
 .ml-6, .mx-6 {
     margin-left: 5.0rem;
 }

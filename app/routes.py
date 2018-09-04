@@ -35,6 +35,8 @@ import logging
 import pyswagger
 import functools
 
+main_pages = Blueprint('main_pages', __name__)
+
 def authenticated_only(f):
     @functools.wraps(f)
     def wrapped(*args, **kwargs):
@@ -43,10 +45,6 @@ def authenticated_only(f):
         else:
             return f(*args, **kwargs)
     return wrapped
-
-main_pages = Blueprint('main_pages', __name__)
-
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
 
 def background_fleet(user, sid):
     while True:
@@ -121,9 +119,10 @@ def handle_kick(_id):
     )
     request = esiclient.request(op)
     if request.status != 204:
+        error_string = request.data['error'] if request.data else str(request.status)
         logging.error('error performing kick for ' + str(_id))
-        logging.error('error is: ' + request.data['error'])
-        emit('error', request.data['error'])
+        logging.error('error is: ' + error_string)
+        emit('error', error_string)
         return
     emit('info', 'member kicked')
 
@@ -147,9 +146,10 @@ def handle_move(info):
     )
     request = esiclient.request(op)
     if request.status != 204:
+        error_string = request.data['error'] if request.data else str(request.status)
         logging.error('error performing move for ' + str(info['id']))
-        logging.error('error is: ' + request.data['error'])
-        emit('error', request.data['error'])
+        logging.error('error is: ' + error_string)
+        emit('error', error_string)
         return
     emit('info', info['name']+' moved to '+info['role'])
     
@@ -212,9 +212,6 @@ def handle_fleet():
     except EsiError as e:
         emit('exception', str(e))
         return
-    except EsiException as e:
-        emit('exception', str(e))
-        return
     current_user.sid = request.sid
     user = copy.copy(current_user)
     sid = request.sid
@@ -235,16 +232,12 @@ def check_fleet():
         character_id=current_user.get_id()
     )
     fleet = esiclient.request(op)
-    if fleet.status != 200:
-        logging.error('error getting fleet for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + fleet.data['error'])
-        raise EsiException(fleet.data['error'])
+    esi_error_check_basic(fleet, 'fleet', str(current_user.get_id()))
     current_user.set_fleet_id(fleet.data['fleet_id'])
 
 def get_fleet(current_user):
     fleet = {'name': 'Fleet'}
     fleet['wings'] = get_fleet_wings(current_user)
-    fleet['wings'] = sorted(fleet['wings'], key=lambda e:e['id'])
     fleet_members, connected_list = get_fleet_members(current_user)
     for member in fleet_members:
         decoded_member = decode_fleet_member(member.copy())
@@ -263,6 +256,9 @@ def get_fleet(current_user):
                             if 'members' not in squad:
                                 squad['members'] = []
                             squad['members'].append(decoded_member)
+    fleet['wings'] = sorted(fleet['wings'], key=lambda e:e['id'])
+    for wing in fleet['wings']:
+        wing['squads'] = sorted(wing['squads'], key=lambda e:e['id'])
     return fleet
 
 def get_fleet_members(current_user):
@@ -272,18 +268,20 @@ def get_fleet_members(current_user):
     )
     fleet = esiclient.request(op)
     if fleet.status >= 400 and fleet.status < 500:
+        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
         logging.error('error getting fleet members for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + fleet.data['error'])
+        logging.error('error is: ' + error_string)
         if fleet.status == 404:
-            if fleet.data['error'] == "Not found":
-                raise EsiError(fleet.data['error'])
-            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool)')
+            if error_string == "Not found":
+                raise EsiError(error_string)
+            raise EsiException(error_string + ' (you must have the fleet boss role to use this tool)')
         else:
-            raise EsiException(fleet.data['error'])
+            raise EsiException(error_string)
     elif fleet.status >= 500:
+        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
         logging.error('error getting fleet members for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + fleet.data['error'])
-        raise EsiError(fleet.data['error'])
+        logging.error('error is: ' + error_string)
+        raise EsiError(error_string)
     _filter = {'id': current_user.fleet_id}
     new_members = [member['character_id'] for member in fleet.data]
     data_to_update = {}
@@ -311,18 +309,20 @@ def get_fleet_wings(current_user):
     )
     fleet = esiclient.request(op)
     if fleet.status >= 400 and fleet.status < 500:
+        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
         logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + fleet.data['error'])
+        logging.error('error is: ' + error_string)
         if fleet.status == 404:
-            if fleet.data['error'] == "Not found":
-                raise EsiError(fleet.data['error'])
-            raise EsiException(fleet.data['error'] + ' (you must have the fleet boss role to use this tool)')
+            if error_string == "Not found":
+                raise EsiError(error_string)
+            raise EsiException(error_string + ' (you must have the fleet boss role to use this tool)')
         else:
-            raise EsiException(fleet.data['error'])
+            raise EsiException(error_string)
     elif fleet.status >= 500:
+        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
         logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + fleet.data['error'])
-        raise EsiError(fleet.data['error'])
+        logging.error('error is: ' + error_string)
+        raise EsiError(error_string)
     fleet.data.sort(key=lambda x: x['id'])
     for wing in fleet.data:
         wing['squads'].sort(key=lambda x: x['id'])
@@ -349,9 +349,9 @@ def id_from_name(_name):
         names=[_name]
     )
     request = esiclient.request(op)
-    if request.status != 200:
-        logging.error('error getting ship data for: ' + str(_name))
-        logging.error('error is: ' + request.data['error'])
+    try:
+        esi_error_check_basic(request, 'ship data', str(_name))
+    except EsiError:
         return 0
     if ('inventory_types' in request.data):
       add_db_entity(request.data['inventory_types'][0]['id'], _name)
@@ -369,12 +369,42 @@ def decode_character_id(_id):
         character_id=_id
     )
     request = esiclient.request(op)
-    if request.status != 200:
-        logging.error('error getting public character data for: ' + str(_id))
-        logging.error('error is: ' + request.data['error'])
-        raise EsiError(request.data['error'])
+    esi_error_check_basic(request, 'public character data', str(_id))
     add_db_entity(_id, request.data['name'])
     return request.data['name']
+
+def decode_ship_id(_id):
+    id_filter = {'id': _id}
+    result = mongo.db.entities.find_one(id_filter)
+    if result is not None:
+        return result['name']
+    op = esiapp.op['get_universe_types_type_id'](
+        type_id=_id
+    )
+    request = esiclient.request(op)
+    esi_error_check_basic(request, 'ship data', str(_id))
+    add_db_entity(_id, request.data['name'])
+    return request.data['name']
+
+def decode_system_id(_id):
+    id_filter = {'id': _id}
+    result = mongo.db.entities.find_one(id_filter)
+    if result is not None:
+        return result['name']
+    op = esiapp.op['get_universe_systems_system_id'](
+        system_id=_id
+    )
+    request = esiclient.request(op)
+    esi_error_check_basic(request, 'system data', str(_id))
+    add_db_entity(_id, request.data['name'])
+    return request.data['name']
+
+def esi_error_check_basic(request, _type, entity):
+    if request.status != 200:
+        error_string = request.data['error'] if request.data else str(request.status)
+        logging.error('error getting ' + _type + ' for: ' + entity)
+        logging.error('error is: ' + error_string)
+        raise EsiError(error_string)
 
 def add_db_sid(_id, sid):
     _filter = {'id': _id}
@@ -391,38 +421,6 @@ def add_db_entity(_id, name):
     update = {"$set": data_to_update}
     mongo.db.entities.find_one_and_update(_filter, update, upsert=True)
 
-def decode_ship_id(_id):
-    id_filter = {'id': _id}
-    result = mongo.db.entities.find_one(id_filter)
-    if result is not None:
-        return result['name']
-    op = esiapp.op['get_universe_types_type_id'](
-        type_id=_id
-    )
-    request = esiclient.request(op)
-    if request.status != 200:
-        logging.error('error getting ship data for: ' + str(_id))
-        logging.error('error is: ' + request.data['error'])
-        raise EsiError(request.data['error'])
-    add_db_entity(_id, request.data['name'])
-    return request.data['name']
-
-def decode_system_id(_id):
-    id_filter = {'id': _id}
-    result = mongo.db.entities.find_one(id_filter)
-    if result is not None:
-        return result['name']
-    op = esiapp.op['get_universe_systems_system_id'](
-        system_id=_id
-    )
-    request = esiclient.request(op)
-    if request.status != 200:
-        logging.error('error getting system data for: ' + str(_id))
-        logging.error('error is: ' + request.data['error'])
-        raise EsiError(request.data['error'])
-    add_db_entity(_id, request.data['name'])
-    return request.data['name']
-
 def update_token(current_user):
     sso_data = current_user.get_sso_data()
     esisecurity.update_token(sso_data)
@@ -438,21 +436,6 @@ def update_token(current_user):
             raise EsiException(e)
         current_user.update_token(tokens)
     return True
-            
-def make_img_url(entry_type, entry_id):
-    """ helper to create image urls that come from the EVE images server """
-    if entry_type == 'character':
-        return 'https://image.eveonline.com/Character/' + str(entry_id) + '_32.jpg'
-    elif entry_type == 'ship':
-        return 'https://image.eveonline.com/Render/' + str(entry_id) + '_32.png'
-    elif entry_type == 'item':
-        return 'https://image.eveonline.com/Type/' + str(entry_id) + '_32.png'
-    elif entry_type == 'station':
-        return 'https://image.eveonline.com/Render/' + str(entry_id) + '_32.png'
-    elif entry_type == 'alliance' or entry_type == 'corporation':
-        return 'https://image.eveonline.com/' + entry_type + '/' + str(entry_id) + '_32.png'
-    else:
-        return ''
 
 class EsiError(Exception):
     pass

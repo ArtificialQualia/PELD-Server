@@ -12,7 +12,14 @@ export var secondsToAverage = (() => {
 export var expandEntries = (() => {
   var storageValue = localStorage.getItem('expandEntries');
   if (storageValue) {
-    return storageValue;
+    return JSON.parse(storageValue);
+  }
+  return false;
+})();
+export var expandInvolved = (() => {
+  var storageValue = localStorage.getItem('expandInvolved');
+  if (storageValue) {
+    return JSON.parse(storageValue);
   }
   return false;
 })();
@@ -45,7 +52,9 @@ export default class SettingsModal extends React.Component {
     super(props);
     this.state = {
       secondsToAverage: secondsToAverage,
-      expandEntries: expandEntries}
+      expandEntries: expandEntries,
+      expandInvolved: expandInvolved
+    }
     this.handleSecondsChange = this.handleSecondsChange.bind(this);
     this.handleExpandChange = this.handleExpandChange.bind(this);
   }
@@ -57,9 +66,16 @@ export default class SettingsModal extends React.Component {
   }
 
   handleExpandChange(event) {
-    this.setState({expandEntries: event.target.checked});
-    expandEntries = event.target.checked;
-    localStorage.setItem('expandEntries', expandEntries);
+    if (event.target.name == "expandEntries") {
+      this.setState({expandEntries: event.target.checked});
+      expandEntries = event.target.checked;
+      localStorage.setItem('expandEntries', expandEntries);
+    }
+    else if (event.target.name == "expandInvolved") {
+      this.setState({expandInvolved: event.target.checked});
+      expandInvolved = event.target.checked;
+      localStorage.setItem('expandInvolved', expandInvolved);
+    }
   }
 
   render () { 
@@ -81,8 +97,12 @@ export default class SettingsModal extends React.Component {
               <br />
               <br />
               <label>
-                <input className="mr-1" type="checkbox" name="expandEntries" checked={this.state.expandEntries} onChange={this.handleExpandChange} />
-                Expand PELD data entries by default
+                <input className="mr-1" type="checkbox" name="expandInvolved" checked={this.state.expandInvolved} onChange={this.handleExpandChange} style={{verticalAlign: '-2px'}} />
+                Expand PELD pilots involved by default
+              </label>
+              <label>
+                <input className="mr-1" type="checkbox" name="expandEntries" checked={this.state.expandEntries} onChange={this.handleExpandChange} style={{verticalAlign: '-2px'}} />
+                Expand PELD weapon entries by default
               </label>
               <h4 className="border-bottom border-secondary mt-2">Colors:</h4>
               <div className="d-flex w-100 justify-content-around">

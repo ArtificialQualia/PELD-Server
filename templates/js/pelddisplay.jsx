@@ -57,7 +57,9 @@ export default class PeldDisplay extends React.Component {
     this.onMouseEnter = this.onMouseEnter.bind(this);
     this.onMouseLeave = this.onMouseLeave.bind(this);
     this.cleanupStats = this.cleanupStats.bind(this);
+    this.timedSetState = this.timedSetState.bind(this);
     setInterval(this.cleanupStats, 100);
+    setInterval(this.timedSetState, 100);
     socket.on('peld_data', (data) => {
       var json_data = JSON.parse(data);
       json_data.entry['time'] = new Date();
@@ -65,7 +67,8 @@ export default class PeldDisplay extends React.Component {
       this.peld_stats[json_data.category].push(json_data.entry);
       this.updateStats(json_data.category);
     });
-    this.lastRender = 0;
+    this.lastRender = new Date().getTime();
+    this.needsUpdate = false;
   }
 
   updateStats(type) {
@@ -102,7 +105,18 @@ export default class PeldDisplay extends React.Component {
       niceType = 'Cap Transferred';
       this.peld_formatted[niceType] = this.updateOutStat(type, niceType);
     }
-    this.setState({peld_data: this.peld_formatted});
+    this.needsUpdate = true;
+  }
+
+  timedSetState() {
+    if (this.needsUpdate) {
+      var nowTimestamp = new Date().getTime();
+      if (nowTimestamp > this.lastRender + 1000) {
+        this.lastRender = new Date().getTime();
+        this.needsUpdate = false;
+        this.setState({peld_data: this.peld_formatted});
+      }
+    }
   }
 
   updateInStat(type, niceType) {
@@ -285,7 +299,6 @@ export default class PeldDisplay extends React.Component {
   }
 
   render () {
-    this.lastRender = new Date();
     return (
       <div className="d-flex flex-column h-100">
         <div className="w-100 p-1 text-center sticky-top border-bottom bg-light border-secondary text-truncate">

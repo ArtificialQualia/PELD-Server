@@ -19,6 +19,9 @@ from app.flask_shared_modules import mongo
 from app.flask_shared_modules import socketio
 
 from datetime import datetime
+import logging
+
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=config.LOG_LEVEL)
 
 # -----------------
 # Globals for flask, also see app/flask_shared_modules.py
