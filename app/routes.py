@@ -297,7 +297,7 @@ def get_fleet_members(current_user):
     data_to_update['fc_sid'] = current_user.sid
     data_to_update['members'] = new_members
     update = {'$set': data_to_update, 
-              '$currentDate': {'updated_time': {'$type': 'timestamp'} }
+              '$currentDate': {'updated_time': {'$type': 'date'} }
               }
     mongo.db.fleets.update_one(_filter, update, upsert=True)
     return fleet.data, data_to_update['connected_members']
