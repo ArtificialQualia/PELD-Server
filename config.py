@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 import datetime
+import logging
 
 # -----------------------------------------------------
 # Application configurations
@@ -8,6 +9,7 @@ SECRET_KEY = 'REPLACE_ME'
 PORT = 5000
 HOST = 'REPLACE_ME'
 VERSION = 'v1.0'
+LOG_LEVEL = logging.WARNING
 
 # -----------------------------------------------------
 # MongoDB Configs
