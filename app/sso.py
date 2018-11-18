@@ -81,8 +81,8 @@ def callback():
     # compare the state with the saved token for CSRF check
     sess_token = session.pop('token', None)
     if sess_token is None or token is None or token != sess_token:
-        logging.debug('Expected session token: ' + sess_token)
-        logging.debug('Received session token: ' + token)
+        logging.debug('Expected session token: ' + str(sess_token) )
+        logging.debug('Received session token: ' + str(token) )
         return render_template("error.html", error='Login EVE Online SSO failed: Session Token Mismatch')
 
     # now we try to get tokens
@@ -131,7 +131,11 @@ def callback():
 @login_manager.user_loader
 def load_user(character_id):
     """ Required user loader for Flask-Login """
-    return User(character_id=character_id, mongo=mongo)
+    try:
+        return User(character_id=character_id, mongo=mongo)
+    except:
+        return None
+
 
 @login_manager.unauthorized_handler
 def unauthorized():
