@@ -52,7 +52,7 @@ with app.app_context():
     mongo.db.fleets.create_index('members')
     mongo.db.fleets.create_index('connected_webapps')
     mongo.db.fleets.create_index('id')
-    mongo.db.characters.update({}, {'$unset': {'sid': ''}}, multi=True)
+    mongo.db.characters.update({}, {'$set': {'sid': []}}, multi=True)
     # 'schema' updates for version upgrades
     doc = mongo.db.version.find_one({})
     if not doc:
