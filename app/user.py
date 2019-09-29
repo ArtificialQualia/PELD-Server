@@ -40,6 +40,7 @@ class User(UserMixin):
         self.refresh_token = user_data['tokens']['refresh_token']
         self.access_token_expires = user_data['tokens']['access_token_expires']
         self.fleet_id = user_data.get('fleet_id', None)
+        self.fleet_role = user_data.get('role', None)
         self.sid = user_data.get('sid', None)
         
         
@@ -56,6 +57,28 @@ class User(UserMixin):
                 self.access_token_expires - datetime.utcnow()
             ).total_seconds()
         }
+        
+    def get_fleet_id(self):
+        character_filter = {'id': self.character_id}
+        char_doc = self.mongo.db.characters.find_one(character_filter)
+        self.fleet_id = char_doc['fleet_id']
+        return self.fleet_id
+        
+    def get_fleet_role(self):
+        character_filter = {'id': self.character_id}
+        char_doc = self.mongo.db.characters.find_one(character_filter)
+        self.fleet_role = char_doc['fleet_role']
+        return self.fleet_role
+        
+    def set_fleet_role(self, role):
+        character_filter = {'id': self.character_id}
+        update = {
+            '$set': {
+                'fleet_role': role
+            }
+        }
+        self.mongo.db.characters.find_one_and_update(character_filter, update)
+        self.fleet_role = role
         
     def set_fleet_id(self, _id):
         character_filter = {'id': self.character_id}

@@ -3,13 +3,8 @@
  Contains all the important routes for the application, along with some helper functions
 """
 
-import pymongo
-
 from flask import render_template
-from flask import url_for
-from flask import abort
 from flask import request
-from flask import jsonify
 from flask import Blueprint
 from flask import session
 
@@ -17,53 +12,22 @@ from flask_login import current_user
 from flask_login import login_required
 
 from flask_socketio import emit
-from flask_socketio import disconnect
 
-import config
 from app.user import User
 from app.flask_shared_modules import mongo
 from app.flask_shared_modules import socketio
 from app.flask_shared_modules import esiapp
 from app.flask_shared_modules import esiclient
-from app.flask_shared_modules import esisecurity
-
-from requests import exceptions
+from app.routes_helpers import (add_db_sid, authenticated_only, update_token, EsiException,
+                                id_from_name, EsiError, remove_db_sid, emit_to_char )
+from app.background_fleet import (background_fleet, update_fleet_metadata)
+from app.version import version
 
 import json
 import copy
 import logging
-import pyswagger
-import functools
 
 main_pages = Blueprint('main_pages', __name__)
-
-def authenticated_only(f):
-    @functools.wraps(f)
-    def wrapped(*args, **kwargs):
-        if not current_user.is_authenticated:
-            disconnect()
-        else:
-            return f(*args, **kwargs)
-    return wrapped
-
-def background_fleet(user, sid):
-    while True:
-        id_filter = {'id': user.character_id}
-        result = mongo.db.characters.find_one(id_filter)
-        if not result or result['sid'] != sid:
-            socketio.emit('exception', 'If you are seeing this, you probably opened PELD-Fleet in another tab. ' + \
-                          'Please close this tab and continue on your new tab.', room=sid)
-            logging.error('sid changed, exiting background update for: ' + str(sid))
-            return
-        try:
-            fleet = get_fleet(user)
-            socketio.emit('fleet_update', json.dumps(fleet, default=json_serial), room=sid)
-        except EsiError as e:
-            socketio.emit('error', str(e), room=sid)
-        except EsiException as e:
-            socketio.emit('exception', str(e), room=sid)
-            return
-        socketio.sleep(5)
 
 @main_pages.route("/app")
 @login_required
@@ -72,7 +36,7 @@ def main_app():
 
 @main_pages.route("/")
 def index():
-    return render_template("index.html", version=config.VERSION)
+    return render_template("index.html", version=version)
     
 @main_pages.route('/faq')
 def faq():
@@ -94,7 +58,7 @@ def handle_client_connect():
 def handle_disconnect():
     logging.debug('Client disconnected, removing sid from db')
     if current_user.is_authenticated:
-        add_db_sid(current_user.character_id, "0")
+        remove_db_sid(current_user.character_id, request.sid)
     
 @socketio.on('disconnect', namespace='/client')
 def handle_client_disconnect():
@@ -105,8 +69,9 @@ def handle_client_disconnect():
         if docs is None:
             return
         for fleet in docs:
-            if fleet['connected_members'] is not None and doc['id'] in fleet['connected_members']:
-                update = {'$set': {'connected_members': fleet['connected_members'].remove(doc['id'])}}
+            if fleet['connected_clients'] is not None and doc['id'] in fleet['connected_clients']:
+                fleet['connected_clients'].remove(doc['id'])
+                update = {'$set': {'connected_clients': fleet['connected_clients']}}
                 mongo.db.fleets.update_one({'id': fleet['id']}, update)
 
 @socketio.on('kick')
@@ -115,13 +80,13 @@ def handle_kick(_id):
     update_token(current_user)
     op = esiapp.op['delete_fleets_fleet_id_members_member_id'](
         member_id=_id,
-        fleet_id=current_user.fleet_id
+        fleet_id=current_user.get_fleet_id()
     )
     request = esiclient.request(op)
     if request.status != 204:
         error_string = request.data['error'] if request.data else str(request.status)
-        logging.error('error performing kick for ' + str(_id))
-        logging.error('error is: ' + error_string)
+        logging.error('error performing kick for %s', _id)
+        logging.error('error is: %s', error_string)
         emit('error', error_string)
         return
     emit('info', 'member kicked')
@@ -129,37 +94,34 @@ def handle_kick(_id):
 @socketio.on('move')
 @authenticated_only
 def handle_move(info):
-    if info['role'] == 'squad_commander':
-        emit('error', "Due to a CCP bug, squad commanders can't be set via ESI.  See: https://github.com/esi/esi-issues/issues/690")
-        return
     movement = {'role': info['role']}
     if info['squad'] > 0:
         movement['squad_id'] = info['squad']
     if info['wing'] > 0:
         movement['wing_id'] = info['wing']
-    print(movement)
     update_token(current_user)
     op = esiapp.op['put_fleets_fleet_id_members_member_id'](
         member_id=info['id'],
-        fleet_id=current_user.fleet_id,
+        fleet_id=current_user.get_fleet_id(),
         movement=movement
     )
     request = esiclient.request(op)
     if request.status != 204:
         error_string = request.data['error'] if request.data else str(request.status)
-        logging.error('error performing move for ' + str(info['id']))
-        logging.error('error is: ' + error_string)
+        logging.error('error performing move for %s', info['id'])
+        logging.error('error is: %s', error_string)
         emit('error', error_string)
         return
     emit('info', info['name']+' moved to '+info['role'])
-    
+
 @socketio.on('register_client', namespace='/client')
-def register_client():
+def register_client(info={}):
     _filter = {'socket_guid': request.cookies['socket_guid']}
     doc = mongo.db.characters.find_one(_filter)
     if doc != None and doc['name'] == request.cookies['name']:
         _filter = {'id': doc['id']}
         data_to_update = {}
+        data_to_update['version'] = info.get('version', 'v2.4.0')
         data_to_update['client_sid'] = request.sid
         update = {"$set": data_to_update}
         mongo.db.characters.update_one(_filter, update)
@@ -170,12 +132,18 @@ def register_client():
 def handle_peld_data(entry):
     entry['entry']['owner'] = request.cookies['name']
     if entry['entry']['shipType'] != entry['entry']['pilotName']:
-      entry['entry']['shipType'] = entry['entry']['shipType'].strip('*')
-      entry['entry']['shipTypeId'] = id_from_name(entry['entry']['shipType'])
+        entry['entry']['shipType'] = entry['entry']['shipType'].strip('*')
+        entry['entry']['shipTypeId'] = id_from_name(entry['entry']['shipType'])
     else:
-      entry['entry'].pop('shipType')
-    fleet_function = lambda x: socketio.emit('peld_data', json.dumps(entry), room=x, namespace=None)
+        entry['entry'].pop('shipType')
+    fleet_function = lambda x: emit_peld_data(json.dumps(entry), x)
     process_incoming_peld(fleet_function)
+
+def emit_peld_data(entry, fleet):
+    for char_id in fleet['connected_webapps']:
+        char_doc = mongo.db.characters.find_one({'id': char_id})
+        if char_id == fleet['fc_id'] or fleet['fleet_access'][char_doc['fleet_role']]:
+            emit_to_char('peld_data', entry, sids=char_doc['sid'])
     
 @socketio.on('peld_check', namespace='/client')
 def handle_peld_check():
@@ -196,249 +164,49 @@ def process_incoming_peld(fleet_function=None):
     if docs is None:
         return
     for fleet in docs:
-        if fleet['connected_members'] is None or _id not in fleet['connected_members']:
-            members = fleet['connected_members'] or []
+        if fleet['connected_clients'] is None or _id not in fleet['connected_clients']:
+            members = fleet['connected_clients'] or []
             members.append(_id)
-            update = {'$set': {'connected_members': members}}
+            update = {'$set': {'connected_clients': members}}
             mongo.db.fleets.update_one({'id': fleet['id']}, update)
         if fleet_function is not None:
-            fleet_function(fleet['fc_sid'])
+            fleet_function(fleet)
 
 @socketio.on('register_fleet_handler')
 @authenticated_only
 def handle_fleet():
+    current_user.sid = request.sid
+    current_user.set_fleet_id(0)
+    add_db_sid(current_user.character_id, request.sid)
+
     try:
-        check_fleet()
-    except EsiError as e:
+        fleet_doc = update_fleet_metadata(current_user)
+    except (EsiError, EsiException) as e:
         emit('exception', str(e))
         return
-    current_user.sid = request.sid
+
+    if fleet_doc['fc_id'] == current_user.character_id:
+        fleet_settings = {'fleet_access': fleet_doc['fleet_access'], 'boss': fleet_doc['fc_id']}
+        fleet_settings_serial = json.dumps(fleet_settings)
+        emit('fleet_settings', fleet_settings_serial)
+    
     user = copy.copy(current_user)
     sid = request.sid
-    add_db_sid(current_user.character_id, sid)
     socketio.start_background_task(target=lambda: background_fleet(user, sid))
-    
-def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
 
-    if isinstance(obj, pyswagger.primitives._time.Datetime):
-        return obj.to_json()
-    raise TypeError ("Type %s not serializable" % type(obj))
+@socketio.on('fleet_settings')
+@authenticated_only
+def handle_fleet_settings(fleet_settings):
+    fleet_settings = json.loads(fleet_settings)
+    _filter = {'id': current_user.get_fleet_id()}
+    fleet_doc = mongo.db.fleets.find_one(_filter)
 
-def check_fleet():
-    update_token(current_user)
-    current_user.fleet_id = None
-    op = esiapp.op['get_characters_character_id_fleet'](
-        character_id=current_user.get_id()
-    )
-    fleet = esiclient.request(op)
-    esi_error_check_basic(fleet, 'fleet', str(current_user.get_id()))
-    current_user.set_fleet_id(fleet.data['fleet_id'])
+    if fleet_doc['fc_id'] != current_user.character_id:
+        emit('error', 'Only Fleet Boss may change fleet settings')
+        return
 
-def get_fleet(current_user):
-    fleet = {'name': 'Fleet'}
-    fleet['wings'] = get_fleet_wings(current_user)
-    fleet_members, connected_list = get_fleet_members(current_user)
-    for member in fleet_members:
-        decoded_member = decode_fleet_member(member.copy())
-        decoded_member['peld_connected'] = decoded_member['character_id'] in connected_list
-        if member['squad_id'] == -1 and member['wing_id'] == -1:
-            fleet['fleet_commander'] = decoded_member
-        for wing in fleet['wings']:
-            if member['wing_id'] == wing['id']:
-                if member['squad_id'] == -1:
-                    wing['wing_commander'] = decoded_member
-                for squad in wing['squads']:
-                    if member['squad_id'] == squad['id']:
-                        if member['role_name'].startswith('Squad Commander'):
-                            squad['squad_commander'] = decoded_member
-                        else:
-                            if 'members' not in squad:
-                                squad['members'] = []
-                            squad['members'].append(decoded_member)
-    fleet['wings'] = sorted(fleet['wings'], key=lambda e:e['id'])
-    for wing in fleet['wings']:
-        wing['squads'] = sorted(wing['squads'], key=lambda e:e['id'])
-    return fleet
-
-def get_fleet_members(current_user):
-    update_token(current_user)
-    op = esiapp.op['get_fleets_fleet_id_members'](
-        fleet_id=current_user.fleet_id
-    )
-    fleet = esiclient.request(op)
-    if fleet.status >= 400 and fleet.status < 500:
-        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
-        logging.error('error getting fleet members for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + error_string)
-        if fleet.status == 404:
-            if error_string == "Not found":
-                raise EsiError(error_string)
-            raise EsiException(error_string + ' (you must have the fleet boss role to use this tool)')
-        else:
-            raise EsiException(error_string)
-    elif fleet.status >= 500:
-        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
-        logging.error('error getting fleet members for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + error_string)
-        raise EsiError(error_string)
-    _filter = {'id': current_user.fleet_id}
-    new_members = [member['character_id'] for member in fleet.data]
-    data_to_update = {}
-    doc = mongo.db.fleets.find_one(_filter)
-    if doc is not None and doc['connected_members'] is not None:
-        for member in doc['connected_members']:
-            if member not in new_members:
-                doc['connected_members'].remove(member)
-        data_to_update['connected_members'] = doc['connected_members']
-    else:
-        data_to_update['connected_members'] = []
-    data_to_update['id'] = current_user.fleet_id
-    data_to_update['fc_sid'] = current_user.sid
-    data_to_update['members'] = new_members
-    update = {'$set': data_to_update, 
+    data_to_update = {'fleet_access': fleet_settings['fleet_access']}
+    update = {'$set': data_to_update,
               '$currentDate': {'updated_time': {'$type': 'date'} }
-              }
-    mongo.db.fleets.update_one(_filter, update, upsert=True)
-    return fleet.data, data_to_update['connected_members']
-
-def get_fleet_wings(current_user):
-    update_token(current_user)
-    op = esiapp.op['get_fleets_fleet_id_wings'](
-        fleet_id=current_user.fleet_id
-    )
-    fleet = esiclient.request(op)
-    if fleet.status >= 400 and fleet.status < 500:
-        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
-        logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + error_string)
-        if fleet.status == 404:
-            if error_string == "Not found":
-                raise EsiError(error_string)
-            raise EsiException(error_string + ' (you must have the fleet boss role to use this tool)')
-        else:
-            raise EsiException(error_string)
-    elif fleet.status >= 500:
-        error_string = fleet.data['error'] if fleet.data else str(fleet.status)
-        logging.error('error getting fleet wings for: ' + str(current_user.get_id()))
-        logging.error('error is: ' + error_string)
-        raise EsiError(error_string)
-    fleet.data.sort(key=lambda x: x['id'])
-    for wing in fleet.data:
-        wing['squads'].sort(key=lambda x: x['id'])
-    return fleet.data
-
-def decode_fleet_member(member):
-    member['character_name'] = decode_character_id(member['character_id'])
-    member['ship_name'] = decode_ship_id(member['ship_type_id'])
-    member['location_name'] = decode_system_id(member['solar_system_id'])
-    member.pop('join_time')
-    member.pop('role')
-    member.pop('solar_system_id')
-    member.pop('squad_id')
-    member.pop('takes_fleet_warp')
-    member.pop('wing_id')
-    return member
-
-def id_from_name(_name):
-    id_filter = {'name': _name}
-    result = mongo.db.entities.find_one(id_filter)
-    if result is not None:
-        return result['id']
-    op = esiapp.op['post_universe_ids'](
-        names=[_name]
-    )
-    request = esiclient.request(op)
-    try:
-        esi_error_check_basic(request, 'ship data', str(_name))
-    except EsiError:
-        return 0
-    if ('inventory_types' in request.data):
-      add_db_entity(request.data['inventory_types'][0]['id'], _name)
-      return request.data['inventory_types'][0]['id']
-    else:
-      add_db_entity(-1, _name)
-      return -1
-
-def decode_character_id(_id):
-    id_filter = {'id': _id}
-    result = mongo.db.entities.find_one(id_filter)
-    if result is not None:
-        return result['name']
-    op = esiapp.op['get_characters_character_id'](
-        character_id=_id
-    )
-    request = esiclient.request(op)
-    esi_error_check_basic(request, 'public character data', str(_id))
-    add_db_entity(_id, request.data['name'])
-    return request.data['name']
-
-def decode_ship_id(_id):
-    id_filter = {'id': _id}
-    result = mongo.db.entities.find_one(id_filter)
-    if result is not None:
-        return result['name']
-    op = esiapp.op['get_universe_types_type_id'](
-        type_id=_id
-    )
-    request = esiclient.request(op)
-    esi_error_check_basic(request, 'ship data', str(_id))
-    add_db_entity(_id, request.data['name'])
-    return request.data['name']
-
-def decode_system_id(_id):
-    id_filter = {'id': _id}
-    result = mongo.db.entities.find_one(id_filter)
-    if result is not None:
-        return result['name']
-    op = esiapp.op['get_universe_systems_system_id'](
-        system_id=_id
-    )
-    request = esiclient.request(op)
-    esi_error_check_basic(request, 'system data', str(_id))
-    add_db_entity(_id, request.data['name'])
-    return request.data['name']
-
-def esi_error_check_basic(request, _type, entity):
-    if request.status != 200:
-        error_string = request.data['error'] if request.data else str(request.status)
-        logging.error('error getting ' + _type + ' for: ' + entity)
-        logging.error('error is: ' + error_string)
-        raise EsiError(error_string)
-
-def add_db_sid(_id, sid):
-    _filter = {'id': _id}
-    data_to_update = {}
-    data_to_update['sid'] = sid
-    update = {"$set": data_to_update}
-    mongo.db.characters.find_one_and_update(_filter, update, upsert=True)
-
-def add_db_entity(_id, name):
-    _filter = {'id': _id}
-    data_to_update = {}
-    data_to_update['id'] = _id
-    data_to_update['name'] = name
-    update = {"$set": data_to_update}
-    mongo.db.entities.find_one_and_update(_filter, update, upsert=True)
-
-def update_token(current_user):
-    sso_data = current_user.get_sso_data()
-    esisecurity.update_token(sso_data)
-    if sso_data['expires_in'] <= 5000:
-        try:
-            tokens = esisecurity.refresh()
-        except exceptions.SSLError:
-            logging.error('ssl error refreshing token for: ' + str(current_user.get_id()))
-            raise EsiError('ssl error refreshing token')
-        except Exception as e:
-            logging.error('error refreshing token for: ' + str(current_user.get_id()))
-            logging.error('error is: ' + str(e))
-            raise EsiException(e)
-        current_user.update_token(tokens)
-    return True
-
-class EsiError(Exception):
-    pass
-
-class EsiException(Exception):
-    pass
+             }
+    mongo.db.fleets.update_one(_filter, update)

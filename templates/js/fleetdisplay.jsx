@@ -1,5 +1,5 @@
 import React from "react";
-import { socket } from "./index";
+import { socket, settingsRef } from "./index";
 import FleetGroup from "./fleetgroup";
 import { FleetMember, FleetPlaceholder } from "./fleetmember";
 import { DragDropContext } from 'react-dnd';
@@ -15,7 +15,9 @@ export default class FleetDisplay extends React.Component {
     this.tooltip = React.createRef();
     this.state = { fleet: 'Getting fleet data...' };
     socket.on('fleet_update', (data) => {
-      this.setState({ fleet: JSON.parse(data) });
+      var fleet_data = JSON.parse(data);
+      this.setState({ fleet: fleet_data });
+      settingsRef.current.setState({fleet_settings: fleet_data.metadata});
     });
     socket.emit('register_fleet_handler');
   }

@@ -18,9 +18,7 @@ class ErrorBox extends React.Component {
     }
 
     componentDidMount() {
-        if (!this.props.exception) {
-          setTimeout(this.closeAlert.bind(this), 5000);
-        }
+        setTimeout(this.closeAlert.bind(this), 5000);
     }
 
     closeAlert() {
@@ -30,7 +28,7 @@ class ErrorBox extends React.Component {
     render() {
         return (
             <div className={"alert "+this.boxType+" alert-dismissible fade w-50 mx-auto show"} style={{pointerEvents: 'all'}} role="alert">
-                <strong>{this.message}</strong> {this.props.message}{this.props.exception ? <span><br /><br />Refresh this page to continue</span> : ""}
+                <strong>{this.message}</strong> {this.props.message}{this.props.exception ? <span><br /><br />Retrying in 5 seconds...</span> : ""}
                 <button ref={this.alertRef} type="button" className="close" data-dismiss="alert">
                     <span>&times;</span>
                 </button>
@@ -57,6 +55,7 @@ export default class Alert extends React.Component {
                 this.count += 1;
                 return {errors: prevState.errors};
             });
+            setTimeout(() => socket.emit('register_fleet_handler'), 5000);
         });
         socket.on('info', (data) => {
             this.setState(function(prevState, props) {

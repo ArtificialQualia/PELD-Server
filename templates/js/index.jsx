@@ -27,10 +27,12 @@ library.add(faCog)
 
 export var socket = null;
 export var peldDataRef = React.createRef();
+export var settingsRef = React.createRef();
 
 if (window.location.pathname.split('/')[1] == 'app') {
   socket = io()
   socket.on('reconnect', (attemptNumber) => {
+    socket.sendBuffer = [];
     socket.emit('register_fleet_handler');
   });
 
@@ -54,7 +56,7 @@ if (window.location.pathname.split('/')[1] == 'app') {
     </SplitPane>
   );
 
-  ReactDOM.render(<SettingsModal />, document.getElementById("settings"))
+  ReactDOM.render(<SettingsModal ref={settingsRef} />, document.getElementById("settings"))
   ReactDOM.render(content, document.getElementById("content"));
   ReactDOM.render(<Alert />, document.getElementById("error"));
 }

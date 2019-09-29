@@ -5,7 +5,7 @@ services:
     build: .
     image: peld:latest
     restart: always
-    command: python3 app.py
+    command: python3 main.py
     expose:
       - "5000"
     depends_on:
@@ -15,7 +15,7 @@ services:
   web-worker1:
     image: peld:latest
     restart: always
-    command: python3 app.py
+    command: python3 main.py
     expose:
       - "5000"
     depends_on:
@@ -24,7 +24,7 @@ services:
   web-worker2:
     image: peld:latest
     restart: always
-    command: python3 app.py
+    command: python3 main.py
     expose:
       - "5000"
     depends_on:
@@ -33,7 +33,7 @@ services:
   web-worker3:
     image: peld:latest
     restart: always
-    command: python3 app.py
+    command: python3 main.py
     expose:
       - "5000"
     depends_on:
@@ -42,7 +42,7 @@ services:
   web-worker4:
     image: peld:latest
     restart: always
-    command: python3 app.py
+    command: python3 main.py
     expose:
       - "5000"
     depends_on:
@@ -110,7 +110,7 @@ services:
             location /static/ {
                 gzip on;
                 gzip_types application/javascript application/x-javascript text/javascript text/css;
-                expires 1d;
+                expires -1;
                 tcp_nodelay  on;
                 alias /usr/share/nginx/html/static/;
             }

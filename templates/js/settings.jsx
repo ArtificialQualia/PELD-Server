@@ -1,6 +1,8 @@
 import React from "react";
 import { SketchPicker } from 'react-color';
 import { cardReferences } from "./pelddisplay";
+import { socket } from "./index";
+import $ from 'jquery';
 
 export var secondsToAverage = (() => {
   var storageValue = localStorage.getItem('secondsToAverage');
@@ -50,13 +52,28 @@ var defaultPickerColors = [
 export default class SettingsModal extends React.Component {
   constructor(props) {
     super(props);
+    this.modal = React.createRef();
     this.state = {
       secondsToAverage: secondsToAverage,
       expandEntries: expandEntries,
-      expandInvolved: expandInvolved
+      expandInvolved: expandInvolved,
+      fleet_settings: {
+        fleet_access: {
+          fleet_commander: false,
+          wing_commander: false,
+          squad_commander: false,
+          squad_member: false
+        },
+        boss: 0
+      }
     }
     this.handleSecondsChange = this.handleSecondsChange.bind(this);
     this.handleExpandChange = this.handleExpandChange.bind(this);
+    this.handleSiteAccessChange = this.handleSiteAccessChange.bind(this);
+    socket.on('fleet_settings', (data) => {
+      this.setState({fleet_settings: JSON.parse(data)});
+      $(this.modal.current).modal('show');
+    });
   }
 
   handleSecondsChange(event) {
@@ -78,9 +95,51 @@ export default class SettingsModal extends React.Component {
     }
   }
 
+  handleSiteAccessChange(event) {
+    var checked = event.target.checked;
+    if (event.target.name == "access_fleet_commander") {
+      this.setState((state) => {
+        var new_state = state;
+        new_state.fleet_settings.fleet_access.fleet_commander = checked;
+        this.sendUpdatedSettings(new_state);
+        return new_state;
+      });
+    }
+    else if (event.target.name == "access_wing_commander") {
+      this.setState((state) => {
+        var new_state = state;
+        new_state.fleet_settings.fleet_access.wing_commander = checked;
+        this.sendUpdatedSettings(new_state);
+        return new_state;
+      });
+    }
+    else if (event.target.name == "access_squad_commander") {
+      this.setState((state) => {
+        var new_state = state;
+        new_state.fleet_settings.fleet_access.squad_commander = checked;
+        this.sendUpdatedSettings(new_state);
+        return new_state;
+      });
+    }
+    else if (event.target.name == "access_squad_member") {
+      this.setState((state) => {
+        var new_state = state;
+        new_state.fleet_settings.fleet_access.squad_member = checked;
+        this.sendUpdatedSettings(new_state);
+        return new_state;
+      });
+    }
+    
+  }
+
+  sendUpdatedSettings(state){
+    socket.emit('fleet_settings', JSON.stringify({fleet_access: state.fleet_settings.fleet_access}));
+  }
+
   render () { 
+    var is_boss = this.state.fleet_settings.boss == $('#character_id').data('id');
     return (
-      <div className="modal fade" id="settingsModal" tabIndex="-1" role="dialog">
+      <div className="modal fade" ref={this.modal} id="settingsModal" tabIndex="-1" role="dialog">
         <div className="modal-dialog modal-dialog-centered" role="document">
           <div className="modal-content">
             <div className="modal-header">
@@ -90,16 +149,43 @@ export default class SettingsModal extends React.Component {
               </button>
             </div>
             <div className="modal-body">
-              <h4 className="border-bottom border-secondary">General:</h4>
+              <h4 className="border-bottom border-secondary">PELD-Fleet Access:</h4>
+              <i>You must be Fleet Boss to modify these</i>
+              <br />
+              <div className="d-flex w-100">
+                <label className="w-50">
+                  <input className="mr-1" type="checkbox" name="access_fleet_commander" disabled={(is_boss) ? "" : "disabled"}
+                    checked={this.state.fleet_settings.fleet_access.fleet_commander} onChange={this.handleSiteAccessChange} style={{verticalAlign: '-2px'}} />
+                  Fleet Commander
+                </label>
+                <label className="w-50">
+                  <input className="mr-1" type="checkbox" name="access_wing_commander" disabled={(is_boss) ? "" : "disabled"}
+                    checked={this.state.fleet_settings.fleet_access.wing_commander} onChange={this.handleSiteAccessChange} style={{verticalAlign: '-2px'}} />
+                  Wing Commanders
+                </label>
+              </div>
+              <div className="d-flex w-100">
+                <label className="w-50">
+                  <input className="mr-1" type="checkbox" name="access_squad_commander" disabled={(is_boss) ? "" : "disabled"}
+                    checked={this.state.fleet_settings.fleet_access.squad_commander} onChange={this.handleSiteAccessChange} style={{verticalAlign: '-2px'}} />
+                  Squad Commanders
+                </label>
+                <label className="w-50">
+                  <input className="mr-1" type="checkbox" name="access_squad_member" disabled={(is_boss) ? "" : "disabled"}
+                    checked={this.state.fleet_settings.fleet_access.squad_member} onChange={this.handleSiteAccessChange} style={{verticalAlign: '-2px'}} />
+                  Squad Members
+                </label>
+              </div>
+              <h4 className="border-bottom border-secondary mt-2">Data Display:</h4>
               Number of seconds to average damage values: <input type="number" min="1" max="999" value={secondsToAverage} onChange={this.handleSecondsChange} />
               <br />
               <i>Note: Make this longer than your fleet's weapon cycle time</i>
               <br />
-              <br />
-              <label>
+              <label className="mt-1">
                 <input className="mr-1" type="checkbox" name="expandInvolved" checked={this.state.expandInvolved} onChange={this.handleExpandChange} style={{verticalAlign: '-2px'}} />
                 Expand PELD pilots involved by default
               </label>
+              <br />
               <label>
                 <input className="mr-1" type="checkbox" name="expandEntries" checked={this.state.expandEntries} onChange={this.handleExpandChange} style={{verticalAlign: '-2px'}} />
                 Expand PELD weapon entries by default
