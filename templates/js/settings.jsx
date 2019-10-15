@@ -64,7 +64,8 @@ export default class SettingsModal extends React.Component {
           squad_commander: false,
           squad_member: false
         },
-        boss: 0
+        boss: 0,
+        client_access: true
       }
     }
     this.handleSecondsChange = this.handleSecondsChange.bind(this);
@@ -129,11 +130,23 @@ export default class SettingsModal extends React.Component {
         return new_state;
       });
     }
+    else if (event.target.name == "client_access") {
+      this.setState((state) => {
+        var new_state = state;
+        new_state.fleet_settings.client_access = checked;
+        this.sendUpdatedSettings(new_state);
+        return new_state;
+      });
+    }
     
   }
 
   sendUpdatedSettings(state){
-    socket.emit('fleet_settings', JSON.stringify({fleet_access: state.fleet_settings.fleet_access}));
+    socket.emit('fleet_settings', JSON.stringify({
+        fleet_access: state.fleet_settings.fleet_access,
+        client_access: state.fleet_settings.client_access
+      })
+    );
   }
 
   render () { 
@@ -149,7 +162,17 @@ export default class SettingsModal extends React.Component {
               </button>
             </div>
             <div className="modal-body">
-              <h4 className="border-bottom border-secondary">PELD-Fleet Access:</h4>
+              <h4 className="border-bottom border-secondary">PELD Client Access:</h4>
+              <i>You must be Fleet Boss to modify this</i>
+              <br />
+              <div className="d-flex w-100">
+                <label className="w-100">
+                  <input className="mr-1" type="checkbox" name="client_access" disabled={(is_boss) ? "" : "disabled"}
+                    checked={this.state.fleet_settings.client_access} onChange={this.handleSiteAccessChange} style={{verticalAlign: '-2px'}} />
+                  Share PELD data with fleet members
+                </label>
+              </div>
+              <h4 className="border-bottom border-secondary mt-3">PELD-Fleet Webapp Access:</h4>
               <i>You must be Fleet Boss to modify these</i>
               <br />
               <div className="d-flex w-100">
@@ -176,7 +199,7 @@ export default class SettingsModal extends React.Component {
                   Squad Members
                 </label>
               </div>
-              <h4 className="border-bottom border-secondary mt-2">Data Display:</h4>
+              <h4 className="border-bottom border-secondary mt-3">Data Display:</h4>
               Number of seconds to average damage values: <input type="number" min="1" max="999" value={secondsToAverage} onChange={this.handleSecondsChange} />
               <br />
               <i>Note: Make this longer than your fleet's weapon cycle time</i>
@@ -190,7 +213,7 @@ export default class SettingsModal extends React.Component {
                 <input className="mr-1" type="checkbox" name="expandEntries" checked={this.state.expandEntries} onChange={this.handleExpandChange} style={{verticalAlign: '-2px'}} />
                 Expand PELD weapon entries by default
               </label>
-              <h4 className="border-bottom border-secondary mt-2">Colors:</h4>
+              <h4 className="border-bottom border-secondary mt-3">Colors:</h4>
               <div className="d-flex w-100 justify-content-around">
                 <ColorButton colorFor="DPS In" color={colors['DPS In']} />
                 <ColorButton colorFor="DPS Out" color={colors['DPS Out']} />

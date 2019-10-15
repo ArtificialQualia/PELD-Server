@@ -61,7 +61,7 @@ class User(UserMixin):
     def get_fleet_id(self):
         character_filter = {'id': self.character_id}
         char_doc = self.mongo.db.characters.find_one(character_filter)
-        self.fleet_id = char_doc['fleet_id']
+        self.fleet_id = char_doc.get('fleet_id', 0)
         return self.fleet_id
         
     def get_fleet_role(self):

@@ -89,7 +89,12 @@ def background_fleet(user, sid):
                         'You will not get data until you are granted access', char_id=char_id)
         socketio.sleep(5)
     
-def update_fleet_metadata(current_user):
+def update_fleet_metadata(current_user, client=False):
+    if client:
+        connectedType = 'connected_clients'
+    else:
+        connectedType = 'connected_webapps'
+
     data_to_update = {}
     update_token(current_user)
 
@@ -105,23 +110,28 @@ def update_fleet_metadata(current_user):
     current_user.set_fleet_role(fleet.data['role'])
 
     # remove from old fleets
-    docs = mongo.db.fleets.find({'connected_webapps': current_user.character_id})
+    docs = mongo.db.fleets.find({connectedType: current_user.character_id})
     if docs is not None:
         for fleet in docs:
-            if fleet['id'] != current_user.fleet_id and current_user.character_id in fleet['connected_webapps']:
-                fleet['connected_webapps'].remove(current_user.character_id)
-                update = {'$set': {'connected_webapps': fleet['connected_webapps']}}
+            if fleet['id'] != current_user.fleet_id and current_user.character_id in fleet[connectedType]:
+                fleet[connectedType].remove(current_user.character_id)
+                update = {'$set': {connectedType: fleet[connectedType]}}
                 mongo.db.fleets.update_one({'id': fleet['id']}, update)
     
     _filter = {'id': current_user.fleet_id}
     doc = mongo.db.fleets.find_one(_filter)
     if doc is not None:
-        if current_user.character_id not in doc['connected_webapps']:
-            doc['connected_webapps'].append(current_user.character_id)
-            data_to_update['connected_webapps'] = doc['connected_webapps']
+        if current_user.character_id not in doc[connectedType]:
+            doc[connectedType].append(current_user.character_id)
+            data_to_update[connectedType] = doc[connectedType]
     else:
-        data_to_update['connected_webapps'] = [current_user.character_id]
-        data_to_update['connected_clients'] = []
+        data_to_update[connectedType] = [current_user.character_id]
+        if client:
+            data_to_update['connected_webapps'] = []
+        else:
+            data_to_update['connected_clients'] = []
+        data_to_update['members'] = []
+        data_to_update['client_access'] = True
         data_to_update['fleet_access'] = {
             'fleet_commander': False,
             'wing_commander': False,
@@ -158,7 +168,11 @@ def get_fleet(current_user, fleet_doc):
     fleet['wings'] = sorted(fleet['wings'], key=lambda e:e['id'])
     for wing in fleet['wings']:
         wing['squads'] = sorted(wing['squads'], key=lambda e:e['id'])
-    fleet['metadata'] = {'boss': fleet_doc['fc_id'], 'fleet_access': fleet_doc['fleet_access']}
+    fleet['metadata'] = {
+        'boss': fleet_doc['fc_id'],
+        'fleet_access': fleet_doc['fleet_access'],
+        'client_access': fleet_doc['client_access']
+    }
     return fleet
 
 def get_fleet_members(current_user, fleet_doc):

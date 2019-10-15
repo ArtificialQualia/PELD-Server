@@ -49,7 +49,7 @@ with app.app_context():
     mongo.db.entities.create_index('id', unique=True)
     mongo.db.entities.create_index('name')
     mongo.db.fleets.create_index('updated_time', expireAfterSeconds=86400)
-    mongo.db.fleets.create_index('members')
+    mongo.db.fleets.create_index('connected_clients')
     mongo.db.fleets.create_index('connected_webapps')
     mongo.db.fleets.create_index('id')
     mongo.db.characters.update({}, {'$set': {'sid': []}}, multi=True)

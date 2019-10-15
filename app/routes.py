@@ -62,17 +62,15 @@ def handle_disconnect():
     
 @socketio.on('disconnect', namespace='/client')
 def handle_client_disconnect():
-    _filter = {'socket_guid': request.cookies['socket_guid']}
+    try:
+        _id = session['user'].character_id
+        _filter = {'id': _id}
+    except KeyError:
+        socket_guid = request.cookies.get('socket_guid', 0)
+        _filter = {'socket_guid': socket_guid}
     doc = mongo.db.characters.find_one(_filter)
     if doc != None and doc['client_sid'] == request.sid:
-        docs = mongo.db.fleets.find({'members': doc['id']})
-        if docs is None:
-            return
-        for fleet in docs:
-            if fleet['connected_clients'] is not None and doc['id'] in fleet['connected_clients']:
-                fleet['connected_clients'].remove(doc['id'])
-                update = {'$set': {'connected_clients': fleet['connected_clients']}}
-                mongo.db.fleets.update_one({'id': fleet['id']}, update)
+        remove_client_from_fleets(doc['id'])
 
 @socketio.on('kick')
 @authenticated_only
@@ -116,9 +114,11 @@ def handle_move(info):
 
 @socketio.on('register_client', namespace='/client')
 def register_client(info={}):
-    _filter = {'socket_guid': request.cookies['socket_guid']}
+    socket_guid = info.get('socket_guid', request.cookies.get('socket_guid', 0))
+    name = info.get('name', request.cookies.get('name', None))
+    _filter = {'socket_guid': socket_guid}
     doc = mongo.db.characters.find_one(_filter)
-    if doc != None and doc['name'] == request.cookies['name']:
+    if doc != None and doc['name'] == name:
         _filter = {'id': doc['id']}
         data_to_update = {}
         data_to_update['version'] = info.get('version', 'v2.4.0')
@@ -130,47 +130,73 @@ def register_client(info={}):
     
 @socketio.on('peld_data', namespace='/client')
 def handle_peld_data(entry):
-    entry['entry']['owner'] = request.cookies['name']
+    if 'owner' not in entry['entry']:
+        entry['entry']['owner'] = request.cookies['name']
     if entry['entry']['shipType'] != entry['entry']['pilotName']:
         entry['entry']['shipType'] = entry['entry']['shipType'].strip('*')
         entry['entry']['shipTypeId'] = id_from_name(entry['entry']['shipType'])
     else:
         entry['entry'].pop('shipType')
-    fleet_function = lambda x: emit_peld_data(json.dumps(entry), x)
-    process_incoming_peld(fleet_function)
+    fleet = process_incoming_peld(socket_guid=entry.get('socket_guid', None), name=entry['entry']['owner'])
+    if 'socket_guid' in entry:
+        entry.pop('socket_guid')
+    if fleet:
+        emit_peld_data(json.dumps(entry), fleet)
 
 def emit_peld_data(entry, fleet):
     for char_id in fleet['connected_webapps']:
         char_doc = mongo.db.characters.find_one({'id': char_id})
         if char_id == fleet['fc_id'] or fleet['fleet_access'][char_doc['fleet_role']]:
             emit_to_char('peld_data', entry, sids=char_doc['sid'])
+    if fleet['client_access']:
+        for char_id in fleet['connected_clients']:
+            char_doc = mongo.db.characters.find_one({'id': char_id})
+            if char_doc and 'sid' in char_doc:
+                socketio.emit('peld_data', entry, room=char_doc['client_sid'], namespace='/client')
     
 @socketio.on('peld_check', namespace='/client')
-def handle_peld_check():
-    process_incoming_peld()
+def handle_peld_check(data={}):
+    fleet = process_incoming_peld(update_metadata=True, **data)
+    if fleet:
+        data = {
+            'connected': len(fleet['connected_clients']),
+            'total': len(fleet['members']),
+            'client_access': fleet['client_access'],
+            'fc_connected': fleet['fc_id'] in fleet['connected_webapps']
+        }
+        emit('peld_check', json.dumps(data))
             
-def process_incoming_peld(fleet_function=None):
+def process_incoming_peld(update_metadata=False, socket_guid=None, name=None):
+    if not socket_guid:
+        socket_guid = request.cookies.get('socket_guid', 0)
+        name = request.cookies.get('name', None)
     try:
         _id = session['user'].character_id
     except KeyError:
-        _filter = {'socket_guid': request.cookies['socket_guid']}
+        _filter = {'socket_guid': socket_guid}
         doc = mongo.db.characters.find_one(_filter)
-        if doc != None and doc['name'] == request.cookies['name']:
+        if doc != None and doc['name'] == name:
             _id = doc['id']
             session['user'] = User(character_id=doc['id'], mongo=mongo)
         else:
-            return
-    docs = mongo.db.fleets.find({'members': _id})
-    if docs is None:
-        return
-    for fleet in docs:
-        if fleet['connected_clients'] is None or _id not in fleet['connected_clients']:
-            members = fleet['connected_clients'] or []
-            members.append(_id)
-            update = {'$set': {'connected_clients': members}}
+            return None
+    if update_metadata:
+        try:
+            return update_fleet_metadata(session['user'], client=True)
+        except (EsiError, EsiException) as e:
+            if str(e) == 'Character is not in a fleet':
+                emit('peld_error', 'Character is not in a fleet')
+                remove_client_from_fleets(_id)
+            return None
+    return mongo.db.fleets.find_one({'connected_clients': _id})
+
+def remove_client_from_fleets(char_id):
+    fleets = mongo.db.fleets.find({'connected_clients': char_id})
+    if fleets is not None:
+        for fleet in fleets:
+            fleet['connected_clients'].remove(char_id)
+            update = {'$set': {'connected_clients': fleet['connected_clients']}}
             mongo.db.fleets.update_one({'id': fleet['id']}, update)
-        if fleet_function is not None:
-            fleet_function(fleet)
 
 @socketio.on('register_fleet_handler')
 @authenticated_only
@@ -186,7 +212,11 @@ def handle_fleet():
         return
 
     if fleet_doc['fc_id'] == current_user.character_id:
-        fleet_settings = {'fleet_access': fleet_doc['fleet_access'], 'boss': fleet_doc['fc_id']}
+        fleet_settings = {
+            'fleet_access': fleet_doc['fleet_access'],
+            'boss': fleet_doc['fc_id'],
+            'client_access': fleet_doc['client_access']
+        }
         fleet_settings_serial = json.dumps(fleet_settings)
         emit('fleet_settings', fleet_settings_serial)
     
@@ -205,7 +235,10 @@ def handle_fleet_settings(fleet_settings):
         emit('error', 'Only Fleet Boss may change fleet settings')
         return
 
-    data_to_update = {'fleet_access': fleet_settings['fleet_access']}
+    data_to_update = {
+        'fleet_access': fleet_settings['fleet_access'],
+        'client_access': fleet_settings['client_access']
+    }
     update = {'$set': data_to_update,
               '$currentDate': {'updated_time': {'$type': 'date'} }
              }
