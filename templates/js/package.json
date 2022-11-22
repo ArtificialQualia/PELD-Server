@@ -50,7 +50,7 @@
     "react-dnd-html5-backend": "^5.0.1",
     "react-dom": "^16.4.2",
     "react-split-pane": "^2.0.2",
-    "socket.io": "^2.1.1",
+    "socket.io": "^2.5.0",
     "style-loader": "^0.21.0",
     "webpack": "^4.16.1",
     "webpack-bundle-analyzer": "^3.3.2",
